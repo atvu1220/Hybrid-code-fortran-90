@@ -6,31 +6,45 @@ module gutsp
 ! Removes particles from the simulation that have gone out of bounds
             use dimensions
             use inputs, only: km_to_m
-            use var_arrays, only: xp,vp,vp1,Ni_tot,input_E,ijkp,beta,beta_p,m_arr,mrat,wght
+            use var_arrays, only: xp,vp,vp1,Ni_tot,input_E,ijkp,beta,beta_p,m_arr,mrat,wght,mix_ind,testPartIndex,nTestParticles!, vplus,vminus
             implicit none
             integer, intent(in):: ion_l
-            integer:: l,m
+            integer:: l,m,tl
+            !Test Particle Indices
+            do tl=1,nTestParticles
+            	if (testPartIndex(tl) .eq. ion_l) then
+            		testPartIndex(tl) = 0
+            		!write(*,*) 'remove_ion=0', ion_l,testPartIndex(tl)
+            	else if (testPartIndex(tl) .gt. ion_l) then
+            		testPartIndex(tl) = testPartIndex(tl) -1
+            		!write(*,*) 'remove_ion,testParticleIndex(tl)', ion_l,testPartIndex(tl)
+            	endif
+            enddo
             
             do m=1,3    !remove ion energy from total input energy
-                  input_E = input_E - 0.5*m_arr(l)*(vp(ion_l,m)*km_to_m)**2 &
-                        / (beta * beta_p(l))
+                  input_E = input_E - 0.5*m_arr(ion_l)*(vp(ion_l,m)*km_to_m)**2 &
+                        / (beta * beta_p(ion_l))
             enddo
 
             do l = ion_l, Ni_tot-1
                   do m = 1,3
                         xp(l,m) = xp(l+1,m)
                         vp(l,m) = vp(l+1,m)
-                        vp(1,m) = vp(l+1,m)
+                        vp1(l,m) = vp1(l+1,m)
                         ijkp(l,m) = ijkp(l+1,m)
                   enddo
                   beta_p(l) = beta_p(l+1)
                   m_arr(l) = m_arr(l+1)
                   mrat(l) = mrat(l+1)
+                mix_ind(l) = mix_ind(l+1)
+                
             enddo
 
             do m=1,8
                   do l= ion_l,Ni_tot-1
                         wght(l,m) = wght(l+1,m)
+                        !vplus(l,m) = vplus(l+1,m)
+                        !vminus(l,m) = vminus(l+1,m)
                   enddo
             enddo
 
@@ -124,7 +138,7 @@ module gutsp
       subroutine get_Ep()
             use dimensions
             use grid_interp
-            use var_arrays, only: Ep,aj,up,btc,Ni_tot,ijkp,mrat,wght,grav, gradP
+            use var_arrays, only: Ep,aj,up,btc,Ni_tot,ijkp,mrat,wght,grav, gradP,xp,vp,np
             use inputs, only: mion
             implicit none
             real:: ajc(nx,ny,nz,3), &     !aj at cell center
@@ -368,15 +382,16 @@ module gutsp
                   
             enddo
             else
+                  !write(*,*) 'Before Moving Ions in Gutsp.....'
                   do l=1,Ni_tot
                         xp(l,1) = xp(l,1) + dth*vp(l,1)
                         xp(l,2) = xp(l,2) + dth*vp(l,2)
                         xp(l,3) = xp(l,3) + dth*vp(l,3)
                   enddo      
-                  
+                  !write(*,*) 'Before Particle Boundary.....'
                   call particle_boundary()
             endif      
-            
+                  !write(*,*) 'After Particle Boundary.....'
       end subroutine move_ion_half
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -865,8 +880,15 @@ module gutsp
             implicit none
             real:: vol,x1,x2,y1,y2,z1,z2
             integer:: i,j,k,l
-            
+            !write(*,*) 'Inside InterpWeights Ni_tot',Ni_tot
             do l=1, Ni_tot
+            
+            
+      !  if (l .ge. 1) then 
+!!		write(*,*) 'starting interpweights',l
+!	endif
+            
+            
 !                  i=1
 
 !                  do while (xp(l,1) .gt. qx(i))
@@ -883,16 +905,39 @@ module gutsp
 !                  enddo
 !                  k=k-1
 !                  ijkp(l,3) = k
+
+	
                   call get_pindex(i,j,k,l)
-                 
                   
+        !if ( (i .ge. nx-1) .and. (k .ge. nz-1) ) then 
+		!write(*,*) 'x of particle l',xp(l,1),qx(nx)
+	!	write(*,*) 'y of particle l',xp(l,2),qy(ny)
+		!write(*,*) 'z of particle l',xp(l,3),qz(nz)
+	!endif
+	
+
+		
+
+	
                   vol = 1.0/((qx(i+1)-qx(i))*(qy(j+1)-qy(j))*(qz(k+1)-qz(k)))
+                  
+!        if (l .ge. 1) then 
+!		write(*,*) 'after vol',vol
+!	endif
+	
+	
+	
                   x1=abs(xp(l,1)-qx(i))
                   x2=abs(xp(l,1)-qx(i+1))
                   y1=abs(xp(l,2)-qy(j))
                   y2=abs(xp(l,2)-qy(j+1))
                   z1=abs(xp(l,3)-qz(k))
                   z2=abs(xp(l,3)-qz(k+1))
+                 
+!        if (l .ge. 388080) then 
+!		write(*,*) 'x1z2',x1,z2
+!	endif                 
+                 
                  
                   wght(l,1) = x2*y2*z2*vol
                   wght(l,2) = x1*y2*z2*vol
@@ -902,6 +947,10 @@ module gutsp
                   wght(l,6) = x1*y1*z2*vol
                   wght(l,7) = x2*y1*z1*vol
                   wght(l,8) = x1*y1*z1*vol
+                  
+!	if (l .ge. 388080) then 
+!		write(*,*) 'wghts'
+!	endif      
                  
                 
             enddo
@@ -1039,14 +1088,15 @@ module gutsp
       end subroutine update_rho
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine update_mixed(mixed,mix_cnt)
+      subroutine update_mixed()
 ! Weight density to eight nearest grid points
             use dimensions
             use MPI
-            use var_arrays, only: Ni_tot,ijkp,mix_ind
+            use var_arrays, only: Ni_tot,ijkp,mix_ind,mixed
+            use boundary
             implicit none
-            real, intent(out):: mixed(nx,ny,nz), mix_cnt(nx,ny,nz)
             real:: recvbuf(nx*ny*nz)
+            real:: mix_cnt(nx,ny,nz)
             integer:: i,j,k,l,count,ierr
             
             count = nx*ny*nz
@@ -1066,7 +1116,7 @@ module gutsp
                   k=ijkp(l,3)
                   
                   mixed(i,j,k) = mixed(i,j,k) + mix_ind(l)
-                  mix_cnt(i,j,k) = mix_cnt(i,j,k) + 1
+                  mix_cnt(i,j,k) = mix_cnt(i,j,k) + 1.0
                   
             enddo
             
@@ -1080,7 +1130,13 @@ module gutsp
             
             mix_cnt(:,:,:) = reshape(recvbuf,(/nx,ny,nz/))
             
-            mixed(:,:,:) = mixed(:,:,:)/mix_cnt(:,:,:)
+            where(mix_cnt(:,:,:) .gt. 0.0)
+            	mixed(:,:,:) = mixed(:,:,:)/mix_cnt(:,:,:)
+            endwhere
+            
+            call add_boundary_scalar(mixed)
+            
+            call boundary_scalar(mixed)
             
       end subroutine update_mixed
       
@@ -1247,8 +1303,353 @@ module gutsp
 !            enddo
             call boundary_vector(up)      
 !            call periodic(up)
+!		up(:,:,1,:) = up(:,:,2,:)
             
       end subroutine update_up
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      subroutine update_up_cold(vp)
+            use dimensions
+            use MPI
+            use boundary
+            use grid, only: qx,qy,qz
+            use var_arrays, only: np_cold,up_cold,Ni_tot,ijkp,beta,beta_p,wght,mix_ind
+            implicit none
+            real, intent(in):: vp(Ni_max,3)
+            real:: ct(nx,ny,nz,3), recvbuf(nx*ny*nz*3),volb,nvolb
+            integer:: i,j,k,m,l,ip,jp,kp,count,ierr
+            
+            count=nx*ny*nz*3
+            !write(*,*) 'before init'
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+                              do m=1,3
+                                    up_cold(i,j,k,m) = 0.0
+                                    ct(i,j,k,m) = 0.0
+                              enddo
+                        enddo
+                  enddo
+            enddo
+            !write(*,*) 'before do while'
+            l=1
+            do while (l .le. Ni_tot) 
+            	do while (mix_ind(l) .eq. 1)
+			l=l+1
+		end do
+            
+            !do l=1,Ni_tot
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+                  if(np_cold(i,j,k) .gt. 0.0) then                  
+                  nvolb = 1.0/(np_cold(i,j,k)*volb)
+                  ct(i,j,k,1) = ct(i,j,k,1) + vp(l,1)*wght(l,1)*nvolb
+                  ct(i,j,k,2) = ct(i,j,k,2) + vp(l,2)*wght(l,1)*nvolb
+                  ct(i,j,k,3) = ct(i,j,k,3) + vp(l,3)*wght(l,1)*nvolb
+                  endif
+
+                  if (np_cold(ip,j,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(ip,j,k)*volb)
+                  ct(ip,j,k,1) = ct(ip,j,k,1) + vp(l,1)*wght(l,2)*nvolb
+                  ct(ip,j,k,2) = ct(ip,j,k,2) + vp(l,2)*wght(l,2)*nvolb
+                  ct(ip,j,k,3) = ct(ip,j,k,3) + vp(l,3)*wght(l,2)*nvolb
+                  endif
+
+                  if (np_cold(i,j,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(i,j,kp)*volb)
+                  ct(i,j,kp,1) = ct(i,j,kp,1) + vp(l,1)*wght(l,3)*nvolb
+                  ct(i,j,kp,2) = ct(i,j,kp,2) + vp(l,2)*wght(l,3)*nvolb
+                  ct(i,j,kp,3) = ct(i,j,kp,3) + vp(l,3)*wght(l,3)*nvolb
+                  endif
+
+                  if (np_cold(ip,j,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(ip,j,kp)*volb)
+                  ct(ip,j,kp,1) = ct(ip,j,kp,1) + vp(l,1)*wght(l,4)*nvolb
+                  ct(ip,j,kp,2) = ct(ip,j,kp,2) + vp(l,2)*wght(l,4)*nvolb
+                  ct(ip,j,kp,3) = ct(ip,j,kp,3) + vp(l,3)*wght(l,4)*nvolb
+                  endif
+
+                  if (np_cold(i,jp,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(i,jp,k)*volb)
+                  ct(i,jp,k,1) = ct(i,jp,k,1) + vp(l,1)*wght(l,5)*nvolb
+                  ct(i,jp,k,2) = ct(i,jp,k,2) + vp(l,2)*wght(l,5)*nvolb
+                  ct(i,jp,k,3) = ct(i,jp,k,3) + vp(l,3)*wght(l,5)*nvolb
+                  endif
+
+                  if (np_cold(ip,jp,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(ip,jp,k)*volb)
+                  ct(ip,jp,k,1) = ct(ip,jp,k,1) + vp(l,1)*wght(l,6)*nvolb
+                  ct(ip,jp,k,2) = ct(ip,jp,k,2) + vp(l,2)*wght(l,6)*nvolb
+                  ct(ip,jp,k,3) = ct(ip,jp,k,3) + vp(l,3)*wght(l,6)*nvolb
+                  endif
+
+                  if (np_cold(i,jp,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(i,jp,kp)*volb)
+                  ct(i,jp,kp,1) = ct(i,jp,kp,1) + vp(l,1)*wght(l,7)*nvolb
+                  ct(i,jp,kp,2) = ct(i,jp,kp,2) + vp(l,2)*wght(l,7)*nvolb
+                  ct(i,jp,kp,3) = ct(i,jp,kp,3) + vp(l,3)*wght(l,7)*nvolb
+                  endif
+
+                  if (np_cold(ip,jp,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_cold(ip,jp,kp)*volb)
+                  ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + vp(l,1)*wght(l,8)*nvolb
+                  ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + vp(l,2)*wght(l,8)*nvolb
+                  ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + vp(l,3)*wght(l,8)*nvolb
+                  endif
+
+
+!         nvolb = np(i,j,k)*volb
+!         ct(i,j,k,1) = ct(i,j,k,1) + vp(l,1)*wght(l,1)/nvolb
+!         ct(i,j,k,2) = ct(i,j,k,2) + vp(l,2)*wght(l,1)/nvolb
+!         ct(i,j,k,3) = ct(i,j,k,3) + vp(l,3)*wght(l,1)/nvolb
+
+!         nvolb = np(ip,j,k)*volb
+!         ct(ip,j,k,1) = ct(ip,j,k,1) + vp(l,1)*wght(l,2)/nvolb
+!         ct(ip,j,k,2) = ct(ip,j,k,2) + vp(l,2)*wght(l,2)/nvolb
+!         ct(ip,j,k,3) = ct(ip,j,k,3) + vp(l,3)*wght(l,2)/nvolb
+
+!         nvolb = np(i,j,kp)*volb
+!         ct(i,j,kp,1) = ct(i,j,kp,1) + vp(l,1)*wght(l,3)/nvolb
+!         ct(i,j,kp,2) = ct(i,j,kp,2) + vp(l,2)*wght(l,3)/nvolb
+!         ct(i,j,kp,3) = ct(i,j,kp,3) + vp(l,3)*wght(l,3)/nvolb
+
+!         nvolb = np(ip,j,kp)*volb
+!         ct(ip,j,kp,1) = ct(ip,j,kp,1) + vp(l,1)*wght(l,4)/nvolb
+!         ct(ip,j,kp,2) = ct(ip,j,kp,2) + vp(l,2)*wght(l,4)/nvolb
+!         ct(ip,j,kp,3) = ct(ip,j,kp,3) + vp(l,3)*wght(l,4)/nvolb
+
+!         nvolb = np(i,jp,k)*volb
+!         ct(i,jp,k,1) = ct(i,jp,k,1) + vp(l,1)*wght(l,5)/nvolb
+!         ct(i,jp,k,2) = ct(i,jp,k,2) + vp(l,2)*wght(l,5)/nvolb
+!         ct(i,jp,k,3) = ct(i,jp,k,3) + vp(l,3)*wght(l,5)/nvolb
+
+!         nvolb = np(ip,jp,k)*volb
+!         ct(ip,jp,k,1) = ct(ip,jp,k,1) + vp(l,1)*wght(l,6)/nvolb
+!         ct(ip,jp,k,2) = ct(ip,jp,k,2) + vp(l,2)*wght(l,6)/nvolb
+!         ct(ip,jp,k,3) = ct(ip,jp,k,3) + vp(l,3)*wght(l,6)/nvolb
+
+!         nvolb = np(i,jp,kp)*volb
+!         ct(i,jp,kp,1) = ct(i,jp,kp,1) + vp(l,1)*wght(l,7)/nvolb
+!         ct(i,jp,kp,2) = ct(i,jp,kp,2) + vp(l,2)*wght(l,7)/nvolb
+!         ct(i,jp,kp,3) = ct(i,jp,kp,3) + vp(l,3)*wght(l,7)/nvolb
+
+!         nvolb = np(ip,jp,kp)*volb
+!         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + vp(l,1)*wght(l,8)/nvolb
+!         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + vp(l,2)*wght(l,8)/nvolb
+!         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + vp(l,3)*wght(l,8)/nvolb
+	    	l=l+1
+            enddo
+            !write(*,*) 'after do while'
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+            
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+           
+            call boundary_vector(ct)
+            !call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            up_cold=ct
+             
+!            do i=1,nx-1                 !interpolate back to contravarient positions  (now in separate routine)
+!                  do j=1,ny-1
+!                        do k=1,nz-1
+!                              up(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+!                              up(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+!                              up(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+!                        enddo
+!                  enddo
+!            enddo
+            call boundary_vector(up_cold)      
+!            call periodic(up)
+!		up(:,:,1,:) = up(:,:,2,:)
+            
+      end subroutine update_up_cold
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      subroutine update_up_mixed(vp)
+            use dimensions
+            use MPI
+            use boundary
+            use grid, only: qx,qy,qz
+            use var_arrays, only: np_mixed,up_mixed,Ni_tot,ijkp,beta,beta_p,wght,mix_ind
+            implicit none
+            real, intent(in):: vp(Ni_max,3)
+            real:: ct(nx,ny,nz,3), recvbuf(nx*ny*nz*3),volb,nvolb
+            integer:: i,j,k,m,l,ip,jp,kp,count,ierr
+            
+            count=nx*ny*nz*3
+            
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+                              do m=1,3
+                                    up_mixed(i,j,k,m) = 0.0
+                                    ct(i,j,k,m) = 0.0
+                              enddo
+                        enddo
+                  enddo
+            enddo
+            
+            l=1
+            do while (l .le. Ni_tot) 
+            	do while (mix_ind(l) .eq. 0)
+			l=l+1
+		end do
+            
+            !do l=1,Ni_tot
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+                  if(np_mixed(i,j,k) .gt. 0.0) then                  
+                  nvolb = 1.0/(np_mixed(i,j,k)*volb)
+                  ct(i,j,k,1) = ct(i,j,k,1) + vp(l,1)*wght(l,1)*nvolb
+                  ct(i,j,k,2) = ct(i,j,k,2) + vp(l,2)*wght(l,1)*nvolb
+                  ct(i,j,k,3) = ct(i,j,k,3) + vp(l,3)*wght(l,1)*nvolb
+                  endif
+
+                  if (np_mixed(ip,j,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(ip,j,k)*volb)
+                  ct(ip,j,k,1) = ct(ip,j,k,1) + vp(l,1)*wght(l,2)*nvolb
+                  ct(ip,j,k,2) = ct(ip,j,k,2) + vp(l,2)*wght(l,2)*nvolb
+                  ct(ip,j,k,3) = ct(ip,j,k,3) + vp(l,3)*wght(l,2)*nvolb
+                  endif
+
+                 if (np_mixed(i,j,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(i,j,kp)*volb)
+                  ct(i,j,kp,1) = ct(i,j,kp,1) + vp(l,1)*wght(l,3)*nvolb
+                  ct(i,j,kp,2) = ct(i,j,kp,2) + vp(l,2)*wght(l,3)*nvolb
+                  ct(i,j,kp,3) = ct(i,j,kp,3) + vp(l,3)*wght(l,3)*nvolb
+                  endif
+
+                  if (np_mixed(ip,j,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(ip,j,kp)*volb)
+                  ct(ip,j,kp,1) = ct(ip,j,kp,1) + vp(l,1)*wght(l,4)*nvolb
+                  ct(ip,j,kp,2) = ct(ip,j,kp,2) + vp(l,2)*wght(l,4)*nvolb
+                  ct(ip,j,kp,3) = ct(ip,j,kp,3) + vp(l,3)*wght(l,4)*nvolb
+                  endif
+
+                  if (np_mixed(i,jp,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(i,jp,k)*volb)
+                  ct(i,jp,k,1) = ct(i,jp,k,1) + vp(l,1)*wght(l,5)*nvolb
+                  ct(i,jp,k,2) = ct(i,jp,k,2) + vp(l,2)*wght(l,5)*nvolb
+                  ct(i,jp,k,3) = ct(i,jp,k,3) + vp(l,3)*wght(l,5)*nvolb
+                  endif
+
+                  if (np_mixed(ip,jp,k) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(ip,jp,k)*volb)
+                  ct(ip,jp,k,1) = ct(ip,jp,k,1) + vp(l,1)*wght(l,6)*nvolb
+                  ct(ip,jp,k,2) = ct(ip,jp,k,2) + vp(l,2)*wght(l,6)*nvolb
+                  ct(ip,jp,k,3) = ct(ip,jp,k,3) + vp(l,3)*wght(l,6)*nvolb
+                  endif
+
+                  if (np_mixed(i,jp,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(i,jp,kp)*volb)
+                  ct(i,jp,kp,1) = ct(i,jp,kp,1) + vp(l,1)*wght(l,7)*nvolb
+                  ct(i,jp,kp,2) = ct(i,jp,kp,2) + vp(l,2)*wght(l,7)*nvolb
+                  ct(i,jp,kp,3) = ct(i,jp,kp,3) + vp(l,3)*wght(l,7)*nvolb
+                  endif
+
+                  if (np_mixed(ip,jp,kp) .gt. 0.0) then
+                  nvolb = 1.0/(np_mixed(ip,jp,kp)*volb)
+                  ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + vp(l,1)*wght(l,8)*nvolb
+                  ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + vp(l,2)*wght(l,8)*nvolb
+                  ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + vp(l,3)*wght(l,8)*nvolb
+                  endif
+
+
+!         nvolb = np(i,j,k)*volb
+!         ct(i,j,k,1) = ct(i,j,k,1) + vp(l,1)*wght(l,1)/nvolb
+!         ct(i,j,k,2) = ct(i,j,k,2) + vp(l,2)*wght(l,1)/nvolb
+!         ct(i,j,k,3) = ct(i,j,k,3) + vp(l,3)*wght(l,1)/nvolb
+
+!         nvolb = np(ip,j,k)*volb
+!         ct(ip,j,k,1) = ct(ip,j,k,1) + vp(l,1)*wght(l,2)/nvolb
+!         ct(ip,j,k,2) = ct(ip,j,k,2) + vp(l,2)*wght(l,2)/nvolb
+!         ct(ip,j,k,3) = ct(ip,j,k,3) + vp(l,3)*wght(l,2)/nvolb
+
+!         nvolb = np(i,j,kp)*volb
+!         ct(i,j,kp,1) = ct(i,j,kp,1) + vp(l,1)*wght(l,3)/nvolb
+!         ct(i,j,kp,2) = ct(i,j,kp,2) + vp(l,2)*wght(l,3)/nvolb
+!         ct(i,j,kp,3) = ct(i,j,kp,3) + vp(l,3)*wght(l,3)/nvolb
+
+!         nvolb = np(ip,j,kp)*volb
+!         ct(ip,j,kp,1) = ct(ip,j,kp,1) + vp(l,1)*wght(l,4)/nvolb
+!         ct(ip,j,kp,2) = ct(ip,j,kp,2) + vp(l,2)*wght(l,4)/nvolb
+!         ct(ip,j,kp,3) = ct(ip,j,kp,3) + vp(l,3)*wght(l,4)/nvolb
+
+!         nvolb = np(i,jp,k)*volb
+!         ct(i,jp,k,1) = ct(i,jp,k,1) + vp(l,1)*wght(l,5)/nvolb
+!         ct(i,jp,k,2) = ct(i,jp,k,2) + vp(l,2)*wght(l,5)/nvolb
+!         ct(i,jp,k,3) = ct(i,jp,k,3) + vp(l,3)*wght(l,5)/nvolb
+
+!         nvolb = np(ip,jp,k)*volb
+!         ct(ip,jp,k,1) = ct(ip,jp,k,1) + vp(l,1)*wght(l,6)/nvolb
+!         ct(ip,jp,k,2) = ct(ip,jp,k,2) + vp(l,2)*wght(l,6)/nvolb
+!         ct(ip,jp,k,3) = ct(ip,jp,k,3) + vp(l,3)*wght(l,6)/nvolb
+
+!         nvolb = np(i,jp,kp)*volb
+!         ct(i,jp,kp,1) = ct(i,jp,kp,1) + vp(l,1)*wght(l,7)/nvolb
+!         ct(i,jp,kp,2) = ct(i,jp,kp,2) + vp(l,2)*wght(l,7)/nvolb
+!         ct(i,jp,kp,3) = ct(i,jp,kp,3) + vp(l,3)*wght(l,7)/nvolb
+
+!         nvolb = np(ip,jp,kp)*volb
+!         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + vp(l,1)*wght(l,8)/nvolb
+!         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + vp(l,2)*wght(l,8)/nvolb
+!         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + vp(l,3)*wght(l,8)/nvolb
+		l=l+1
+            enddo
+            
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+            
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+           
+            call boundary_vector(ct)
+            !call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            up_mixed=ct
+             
+!            do i=1,nx-1                 !interpolate back to contravarient positions  (now in separate routine)
+!                  do j=1,ny-1
+!                        do k=1,nz-1
+!                              up(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+!                              up(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+!                              up(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+!                        enddo
+!                  enddo
+!            enddo
+            call boundary_vector(up_mixed)      
+!            call periodic(up)
+!		up(:,:,1,:) = up(:,:,2,:)
+            
+      end subroutine update_up_mixed      
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine up_fld_mv()
             use dimensions
@@ -1838,6 +2239,645 @@ module gutsp
       end subroutine get_temperature
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     subroutine update_np_mixed()
+! Weight density to eight nearest grid points
+            use dimensions
+            use MPI
+            use grid, only: dx_grid,dy_grid,dz_grid
+            use boundary
+            use var_arrays, only: np_mixed,Ni_tot,ijkp,beta,beta_p,wght,mix_ind
+            implicit none
+            real:: volb, recvbuf(nx*ny*nz)
+            integer:: i,j,k,l,ip,jp,kp,ierr,count
+            
+            count = nx*ny*nz
+            
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+                              np_mixed(i,j,k) = 0.0
+                        enddo
+                  enddo
+            enddo
+            l=1
+            do while (l .le. Ni_tot)  !l=1, Ni_tot
+            	do while (mix_ind(l) .eq. 0)
+			l=l+1
+		end do
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = 1.0/(dx_grid(i)*dy_grid(j)*dz_grid(k)*beta*beta_p(l))
+!                  volb = beta_p(l)/(dx_grid(i)*dy_grid(j)*dz_grid(k)*beta)
+                  
+                  np_mixed(i,j,k) = np_mixed(i,j,k) + wght(l,1)*volb
+                  np_mixed(ip,j,k) = np_mixed(ip,j,k) + wght(l,2)*volb
+                  np_mixed(i,j,kp) = np_mixed(i,j,kp) + wght(l,3)*volb
+                  np_mixed(ip,j,kp) = np_mixed(ip,j,kp) + wght(l,4)*volb
+                  np_mixed(i,jp,k) = np_mixed(i,jp,k) + wght(l,5)*volb
+                  np_mixed(ip,jp,k) = np_mixed(ip,jp,k) + wght(l,6)*volb
+                  np_mixed(i,jp,kp) = np_mixed(i,jp,kp) + wght(l,7)*volb
+                  np_mixed(ip,jp,kp) = np_mixed(ip,jp,kp) + wght(l,8)*volb
+                  
+                  l=l+1
+            end do
+                  
+            !Used for periodic boundary conditions
+            call add_boundary_scalar(np_mixed)
+            
+!            np(nx-1,:,:) = np(nx-1,:,:) + np(1,:,:)
+!            np(:,ny-1,:) = np(:,ny-1,:) + np(:,1,:)
+!            np(:,:,nz-1) = np(:,:,nz-1) + np(:,:,1)
+            
+            
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(np_mixed(:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            np_mixed(:,:,:) = reshape(recvbuf,(/nx,ny,nz/))
+            
+            call boundary_scalar(np_mixed)
+!            call periodic_scalar(np)
+            
+      end subroutine update_np_mixed
+      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+subroutine get_temperature_mixed()
+            use dimensions
+            use MPI
+            use boundary
+            use inputs, only: mion
+            use grid, only: qx,qy,qz
+            use var_arrays, only: vp,np_mixed,temp_p_mixed,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind
+            implicit none
+            real:: recvbuf(nx*ny*nz*3),up2(nx,ny,nz,3),up_ave(nx,ny,nz,3),ct(nx,ny,nz,3),volb,nvolb,mvp(Ni_tot,3)
+            integer:: i,j,k,l,m,ip,jp,kp,count,ierr
+            
+            count = nx*ny*nz*3
+            
+            up2(:,:,:,:) = 0.0
+            up_ave(:,:,:,:) = 0.0
+            ct(:,:,:,:) = 0.0
+            
+            !do m=1,3
+            !      mvp(1:Ni_tot,m) = vp(1:Ni_tot,m)/sqrt(mrat(:))
+            !enddo
+            do l=1,Ni_tot
+            	do m=1,3
+                  mvp(l,m) = vp(l,m)/sqrt(mrat(l))
+                  enddo
+            enddo
+            
+            l=1
+            do while (l .le. Ni_tot) !do l=1,Ni_tot
+            	do while (mix_ind(l) .eq. 0)
+			l=l+1
+		end do
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+         if (np_mixed(i,j,k) .gt. 0.0) then
+         nvolb = np_mixed(i,j,k)*volb
+         ct(i,j,k,1) = ct(i,j,k,1) + mvp(l,1)**2*wght(l,1)/nvolb  
+         ct(i,j,k,2) = ct(i,j,k,2) + mvp(l,2)**2*wght(l,1)/nvolb
+         ct(i,j,k,3) = ct(i,j,k,3) + mvp(l,3)**2*wght(l,1)/nvolb
+         endif
+
+         if (np_mixed(ip,j,k) .gt. 0.0) then
+         nvolb = np_mixed(ip,j,k)*volb
+         ct(ip,j,k,1) = ct(ip,j,k,1) + mvp(l,1)**2*wght(l,2)/nvolb
+         ct(ip,j,k,2) = ct(ip,j,k,2) + mvp(l,2)**2*wght(l,2)/nvolb
+         ct(ip,j,k,3) = ct(ip,j,k,3) + mvp(l,3)**2*wght(l,2)/nvolb
+         endif
+
+         if (np_mixed(i,j,kp) .gt. 0.0) then
+         nvolb = np_mixed(i,j,kp)*volb
+         ct(i,j,kp,1) = ct(i,j,kp,1) + mvp(l,1)**2*wght(l,3)/nvolb
+         ct(i,j,kp,2) = ct(i,j,kp,2) + mvp(l,2)**2*wght(l,3)/nvolb
+         ct(i,j,kp,3) = ct(i,j,kp,3) + mvp(l,3)**2*wght(l,3)/nvolb
+         endif
+
+         if (np_mixed(ip,j,kp) .gt. 0.0) then
+         nvolb = np_mixed(ip,j,kp)*volb
+         ct(ip,j,kp,1) = ct(ip,j,kp,1) + mvp(l,1)**2*wght(l,4)/nvolb
+         ct(ip,j,kp,2) = ct(ip,j,kp,2) + mvp(l,2)**2*wght(l,4)/nvolb
+         ct(ip,j,kp,3) = ct(ip,j,kp,3) + mvp(l,3)**2*wght(l,4)/nvolb
+         endif
+
+         if (np_mixed(i,jp,k) .gt. 0.0) then
+         nvolb = np_mixed(i,jp,k)*volb
+         ct(i,jp,k,1) = ct(i,jp,k,1) + mvp(l,1)**2*wght(l,5)/nvolb
+         ct(i,jp,k,2) = ct(i,jp,k,2) + mvp(l,2)**2*wght(l,5)/nvolb
+         ct(i,jp,k,3) = ct(i,jp,k,3) + mvp(l,3)**2*wght(l,5)/nvolb
+         endif
+
+         if (np_mixed(ip,jp,k) .gt. 0.0) then
+         nvolb = np_mixed(ip,jp,k)*volb
+         ct(ip,jp,k,1) = ct(ip,jp,k,1) + mvp(l,1)**2*wght(l,6)/nvolb
+         ct(ip,jp,k,2) = ct(ip,jp,k,2) + mvp(l,2)**2*wght(l,6)/nvolb
+         ct(ip,jp,k,3) = ct(ip,jp,k,3) + mvp(l,3)**2*wght(l,6)/nvolb
+         endif
+
+         if (np_mixed(i,jp,kp) .gt. 0.0) then
+         nvolb = np_mixed(i,jp,kp)*volb
+         ct(i,jp,kp,1) = ct(i,jp,kp,1) + mvp(l,1)**2*wght(l,7)/nvolb
+         ct(i,jp,kp,2) = ct(i,jp,kp,2) + mvp(l,2)**2*wght(l,7)/nvolb
+         ct(i,jp,kp,3) = ct(i,jp,kp,3) + mvp(l,3)**2*wght(l,7)/nvolb
+         endif
+
+         if (np_mixed(ip,jp,kp) .gt. 0.0) then
+         nvolb = np_mixed(ip,jp,kp)*volb
+         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + mvp(l,1)**2*wght(l,8)/nvolb
+         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + mvp(l,2)**2*wght(l,8)/nvolb
+         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + mvp(l,3)**2*wght(l,8)/nvolb
+         endif
+         
+         l=l+1
+         
+         end do
+            
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+            call boundary_vector(ct)
+            
+!            call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            
+            do i=1,nx-1
+                  do j=1,ny-1
+                        do k=1,nz-1
+                              up2(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+                              up2(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+                              up2(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+                        enddo
+                  enddo
+            enddo
+            
+            call boundary_vector(up2)
+!            call periodic(up2)
+            
+            ct(:,:,:,:) = 0.0
+            l=1
+            do while (l .le. Ni_tot) !do l=1,Ni_tot
+            
+            	do while (mix_ind(l) .eq. 0)
+			l=l+1
+		end do
+		
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+         if (np_mixed(i,j,k) .gt. 0.0) then
+         nvolb = np_mixed(i,j,k)*volb
+         ct(i,j,k,1) = ct(i,j,k,1) + mvp(l,1)*wght(l,1)/nvolb  
+         ct(i,j,k,2) = ct(i,j,k,2) + mvp(l,2)*wght(l,1)/nvolb
+         ct(i,j,k,3) = ct(i,j,k,3) + mvp(l,3)*wght(l,1)/nvolb
+         endif
+
+         if (np_mixed(ip,j,k) .gt. 0.0) then
+         nvolb = np_mixed(ip,j,k)*volb
+         ct(ip,j,k,1) = ct(ip,j,k,1) + mvp(l,1)*wght(l,2)/nvolb
+         ct(ip,j,k,2) = ct(ip,j,k,2) + mvp(l,2)*wght(l,2)/nvolb
+         ct(ip,j,k,3) = ct(ip,j,k,3) + mvp(l,3)*wght(l,2)/nvolb
+         endif
+
+         if (np_mixed(i,j,kp) .gt. 0.0) then
+         nvolb = np_mixed(i,j,kp)*volb
+         ct(i,j,kp,1) = ct(i,j,kp,1) + mvp(l,1)*wght(l,3)/nvolb
+         ct(i,j,kp,2) = ct(i,j,kp,2) + mvp(l,2)*wght(l,3)/nvolb
+         ct(i,j,kp,3) = ct(i,j,kp,3) + mvp(l,3)*wght(l,3)/nvolb
+         endif
+
+         if (np_mixed(ip,j,kp) .gt. 0.0) then
+         nvolb = np_mixed(ip,j,kp)*volb
+         ct(ip,j,kp,1) = ct(ip,j,kp,1) + mvp(l,1)*wght(l,4)/nvolb
+         ct(ip,j,kp,2) = ct(ip,j,kp,2) + mvp(l,2)*wght(l,4)/nvolb
+         ct(ip,j,kp,3) = ct(ip,j,kp,3) + mvp(l,3)*wght(l,4)/nvolb
+         endif
+
+         if (np_mixed(i,jp,k) .gt. 0.0) then
+         nvolb = np_mixed(i,jp,k)*volb
+         ct(i,jp,k,1) = ct(i,jp,k,1) + mvp(l,1)*wght(l,5)/nvolb
+         ct(i,jp,k,2) = ct(i,jp,k,2) + mvp(l,2)*wght(l,5)/nvolb
+         ct(i,jp,k,3) = ct(i,jp,k,3) + mvp(l,3)*wght(l,5)/nvolb
+         endif
+
+         if (np_mixed(ip,jp,k) .gt. 0.0) then
+         nvolb = np_mixed(ip,jp,k)*volb
+         ct(ip,jp,k,1) = ct(ip,jp,k,1) + mvp(l,1)*wght(l,6)/nvolb
+         ct(ip,jp,k,2) = ct(ip,jp,k,2) + mvp(l,2)*wght(l,6)/nvolb
+         ct(ip,jp,k,3) = ct(ip,jp,k,3) + mvp(l,3)*wght(l,6)/nvolb
+         endif
+
+         if (np_mixed(i,jp,kp) .gt. 0.0) then
+         nvolb = np_mixed(i,jp,kp)*volb
+         ct(i,jp,kp,1) = ct(i,jp,kp,1) + mvp(l,1)*wght(l,7)/nvolb
+         ct(i,jp,kp,2) = ct(i,jp,kp,2) + mvp(l,2)*wght(l,7)/nvolb
+         ct(i,jp,kp,3) = ct(i,jp,kp,3) + mvp(l,3)*wght(l,7)/nvolb
+         endif
+
+         if (np_mixed(ip,jp,kp) .gt. 0.0) then
+         nvolb = np_mixed(ip,jp,kp)*volb
+         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + mvp(l,1)*wght(l,8)/nvolb
+         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + mvp(l,2)*wght(l,8)/nvolb
+         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + mvp(l,3)*wght(l,8)/nvolb
+         endif
+         l=l+1
+            enddo
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+            call boundary_vector(ct)
+!            call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            
+            do i=1,nx-1
+                  do j=1,ny-1
+                        do k=1,nz-1
+                              up_ave(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+                              up_ave(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+                              up_ave(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+                        enddo
+                  enddo
+            enddo
+            
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+!                              temp_p(i,j,k) = (1./3.)*1e6*mion*(sqrt((up2(i,j,k,1) &
+!                                    - up_ave(i,j,k,1)**2)**2 + &
+!                                    (up2(i,j,k,2) - up_ave(i,j,k,2)**2)**2 + & 
+!                                    (up2(i,j,k,3) - up_ave(i,j,k,3)**2)**2))  
+                              temp_p_mixed(i,j,k) = (1./3.)*1e6*mion*( &
+                                    up2(i,j,k,1) - up_ave(i,j,k,1)**2 + &
+                                    up2(i,j,k,2) - up_ave(i,j,k,2)**2 + & 
+                                    up2(i,j,k,3) - up_ave(i,j,k,3)**2)
+                        enddo
+                  enddo
+            enddo
+
+            call boundary_scalar(temp_p_mixed)
+            
+      end subroutine get_temperature_mixed
+      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     subroutine update_np_cold()
+! Weight density to eight nearest grid points
+            use dimensions
+            use MPI
+            use grid, only: dx_grid,dy_grid,dz_grid
+            use boundary
+            use var_arrays, only: np_cold,Ni_tot,ijkp,beta,beta_p,wght,mix_ind
+            use mult_proc
+            implicit none
+            real:: volb, recvbuf(nx*ny*nz)
+            integer:: i,j,k,l,ip,jp,kp,ierr,count
+            
+            count = nx*ny*nz
+
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+                              np_cold(i,j,k) = 0.0
+                        enddo
+                  enddo
+            enddo
+
+	   l=1
+           
+            do while (l .le. Ni_tot) !do l=1, Ni_tot
+
+            	do while (mix_ind(l) .eq. 1)
+			l=l+1
+		end do
+		
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = 1.0/(dx_grid(i)*dy_grid(j)*dz_grid(k)*beta*beta_p(l))
+!                  volb = beta_p(l)/(dx_grid(i)*dy_grid(j)*dz_grid(k)*beta)
+                  
+                  np_cold(i,j,k) = np_cold(i,j,k) + wght(l,1)*volb
+                  np_cold(ip,j,k) = np_cold(ip,j,k) + wght(l,2)*volb
+                  np_cold(i,j,kp) = np_cold(i,j,kp) + wght(l,3)*volb
+                  np_cold(ip,j,kp) = np_cold(ip,j,kp) + wght(l,4)*volb
+                  np_cold(i,jp,k) = np_cold(i,jp,k) + wght(l,5)*volb
+                  np_cold(ip,jp,k) = np_cold(ip,jp,k) + wght(l,6)*volb
+                  np_cold(i,jp,kp) = np_cold(i,jp,kp) + wght(l,7)*volb
+                  np_cold(ip,jp,kp) = np_cold(ip,jp,kp) + wght(l,8)*volb
+                  
+                l=l+1  
+            enddo
+            
+               !write(*,*) 'after volb', Ni_tot   
+            !Used for periodic boundary conditions
+            call add_boundary_scalar(np_cold)
+            
+!            np(nx-1,:,:) = np(nx-1,:,:) + np(1,:,:)
+!            np(:,ny-1,:) = np(:,ny-1,:) + np(:,1,:)
+!            np(:,:,nz-1) = np(:,:,nz-1) + np(:,:,1)
+            
+            
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(np_cold(:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            np_cold(:,:,:) = reshape(recvbuf,(/nx,ny,nz/))
+            
+            call boundary_scalar(np_cold)
+!            call periodic_scalar(np)
+            
+      end subroutine update_np_cold
+      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+subroutine get_temperature_cold()
+            use dimensions
+            use MPI
+            use boundary
+            use inputs, only: mion
+            use grid, only: qx,qy,qz
+            use var_arrays, only: vp,np_cold,temp_p_cold,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind
+            implicit none
+            real:: recvbuf(nx*ny*nz*3),up2(nx,ny,nz,3),up_ave(nx,ny,nz,3),ct(nx,ny,nz,3),volb,nvolb,mvp(Ni_tot,3)
+            integer:: i,j,k,l,m,ip,jp,kp,count,ierr
+            
+            count = nx*ny*nz*3
+            
+            up2(:,:,:,:) = 0.0
+            up_ave(:,:,:,:) = 0.0
+            ct(:,:,:,:) = 0.0
+            
+            
+           do l=1,Ni_tot
+            	do m=1,3
+                  mvp(l,m) = vp(l,m)/sqrt(mrat(l))
+                  enddo
+            enddo
+            l=1
+            do while (l .le. Ni_tot) !do l=1,Ni_tot
+            	do while (mix_ind(l) .eq. 1)
+			l=l+1
+		end do
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+         if (np_cold(i,j,k) .gt. 0.0) then
+         nvolb = np_cold(i,j,k)*volb
+         ct(i,j,k,1) = ct(i,j,k,1) + mvp(l,1)**2*wght(l,1)/nvolb  
+         ct(i,j,k,2) = ct(i,j,k,2) + mvp(l,2)**2*wght(l,1)/nvolb
+         ct(i,j,k,3) = ct(i,j,k,3) + mvp(l,3)**2*wght(l,1)/nvolb
+         endif
+
+         if (np_cold(ip,j,k) .gt. 0.0) then
+         nvolb = np_cold(ip,j,k)*volb
+         ct(ip,j,k,1) = ct(ip,j,k,1) + mvp(l,1)**2*wght(l,2)/nvolb
+         ct(ip,j,k,2) = ct(ip,j,k,2) + mvp(l,2)**2*wght(l,2)/nvolb
+         ct(ip,j,k,3) = ct(ip,j,k,3) + mvp(l,3)**2*wght(l,2)/nvolb
+         endif
+
+         if (np_cold(i,j,kp) .gt. 0.0) then
+         nvolb = np_cold(i,j,kp)*volb
+         ct(i,j,kp,1) = ct(i,j,kp,1) + mvp(l,1)**2*wght(l,3)/nvolb
+         ct(i,j,kp,2) = ct(i,j,kp,2) + mvp(l,2)**2*wght(l,3)/nvolb
+         ct(i,j,kp,3) = ct(i,j,kp,3) + mvp(l,3)**2*wght(l,3)/nvolb
+         endif
+
+         if (np_cold(ip,j,kp) .gt. 0.0) then
+         nvolb = np_cold(ip,j,kp)*volb
+         ct(ip,j,kp,1) = ct(ip,j,kp,1) + mvp(l,1)**2*wght(l,4)/nvolb
+         ct(ip,j,kp,2) = ct(ip,j,kp,2) + mvp(l,2)**2*wght(l,4)/nvolb
+         ct(ip,j,kp,3) = ct(ip,j,kp,3) + mvp(l,3)**2*wght(l,4)/nvolb
+         endif
+
+         if (np_cold(i,jp,k) .gt. 0.0) then
+         nvolb = np_cold(i,jp,k)*volb
+         ct(i,jp,k,1) = ct(i,jp,k,1) + mvp(l,1)**2*wght(l,5)/nvolb
+         ct(i,jp,k,2) = ct(i,jp,k,2) + mvp(l,2)**2*wght(l,5)/nvolb
+         ct(i,jp,k,3) = ct(i,jp,k,3) + mvp(l,3)**2*wght(l,5)/nvolb
+         endif
+
+         if (np_cold(ip,jp,k) .gt. 0.0) then
+         nvolb = np_cold(ip,jp,k)*volb
+         ct(ip,jp,k,1) = ct(ip,jp,k,1) + mvp(l,1)**2*wght(l,6)/nvolb
+         ct(ip,jp,k,2) = ct(ip,jp,k,2) + mvp(l,2)**2*wght(l,6)/nvolb
+         ct(ip,jp,k,3) = ct(ip,jp,k,3) + mvp(l,3)**2*wght(l,6)/nvolb
+         endif
+
+         if (np_cold(i,jp,kp) .gt. 0.0) then
+         nvolb = np_cold(i,jp,kp)*volb
+         ct(i,jp,kp,1) = ct(i,jp,kp,1) + mvp(l,1)**2*wght(l,7)/nvolb
+         ct(i,jp,kp,2) = ct(i,jp,kp,2) + mvp(l,2)**2*wght(l,7)/nvolb
+         ct(i,jp,kp,3) = ct(i,jp,kp,3) + mvp(l,3)**2*wght(l,7)/nvolb
+         endif
+
+         if (np_cold(ip,jp,kp) .gt. 0.0) then
+         nvolb = np_cold(ip,jp,kp)*volb
+         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + mvp(l,1)**2*wght(l,8)/nvolb
+         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + mvp(l,2)**2*wght(l,8)/nvolb
+         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + mvp(l,3)**2*wght(l,8)/nvolb
+         endif
+         l=l+1
+         enddo
+            
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+            call boundary_vector(ct)
+            
+!            call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            
+            do i=1,nx-1
+                  do j=1,ny-1
+                        do k=1,nz-1
+                              up2(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+                              up2(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+                              up2(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+                        enddo
+                  enddo
+            enddo
+            
+            call boundary_vector(up2)
+!            call periodic(up2)
+            
+            ct(:,:,:,:) = 0.0
+            l=1
+            do while (l .le. Ni_tot) !do l=1,Ni_tot
+            
+            	do while (mix_ind(l) .eq. 1)
+			l=l+1
+		end do
+		
+                  i=ijkp(l,1)
+                  j=ijkp(l,2)
+                  k=ijkp(l,3)
+                  
+                  ip=i+1
+                  jp=j+1
+                  kp=k+1
+                  
+                  volb = (qx(ip)-qx(i))*(qy(jp)-qy(j))*(qz(kp)-qz(k))*beta*beta_p(l)
+                  
+         if (np_cold(i,j,k) .gt. 0.0) then
+         nvolb = np_cold(i,j,k)*volb
+         ct(i,j,k,1) = ct(i,j,k,1) + mvp(l,1)*wght(l,1)/nvolb  
+         ct(i,j,k,2) = ct(i,j,k,2) + mvp(l,2)*wght(l,1)/nvolb
+         ct(i,j,k,3) = ct(i,j,k,3) + mvp(l,3)*wght(l,1)/nvolb
+         endif
+
+         if (np_cold(ip,j,k) .gt. 0.0) then
+         nvolb = np_cold(ip,j,k)*volb
+         ct(ip,j,k,1) = ct(ip,j,k,1) + mvp(l,1)*wght(l,2)/nvolb
+         ct(ip,j,k,2) = ct(ip,j,k,2) + mvp(l,2)*wght(l,2)/nvolb
+         ct(ip,j,k,3) = ct(ip,j,k,3) + mvp(l,3)*wght(l,2)/nvolb
+         endif
+
+         if (np_cold(i,j,kp) .gt. 0.0) then
+         nvolb = np_cold(i,j,kp)*volb
+         ct(i,j,kp,1) = ct(i,j,kp,1) + mvp(l,1)*wght(l,3)/nvolb
+         ct(i,j,kp,2) = ct(i,j,kp,2) + mvp(l,2)*wght(l,3)/nvolb
+         ct(i,j,kp,3) = ct(i,j,kp,3) + mvp(l,3)*wght(l,3)/nvolb
+         endif
+
+         if (np_cold(ip,j,kp) .gt. 0.0) then
+         nvolb = np_cold(ip,j,kp)*volb
+         ct(ip,j,kp,1) = ct(ip,j,kp,1) + mvp(l,1)*wght(l,4)/nvolb
+         ct(ip,j,kp,2) = ct(ip,j,kp,2) + mvp(l,2)*wght(l,4)/nvolb
+         ct(ip,j,kp,3) = ct(ip,j,kp,3) + mvp(l,3)*wght(l,4)/nvolb
+         endif
+
+         if (np_cold(i,jp,k) .gt. 0.0) then
+         nvolb = np_cold(i,jp,k)*volb
+         ct(i,jp,k,1) = ct(i,jp,k,1) + mvp(l,1)*wght(l,5)/nvolb
+         ct(i,jp,k,2) = ct(i,jp,k,2) + mvp(l,2)*wght(l,5)/nvolb
+         ct(i,jp,k,3) = ct(i,jp,k,3) + mvp(l,3)*wght(l,5)/nvolb
+         endif
+
+         if (np_cold(ip,jp,k) .gt. 0.0) then
+         nvolb = np_cold(ip,jp,k)*volb
+         ct(ip,jp,k,1) = ct(ip,jp,k,1) + mvp(l,1)*wght(l,6)/nvolb
+         ct(ip,jp,k,2) = ct(ip,jp,k,2) + mvp(l,2)*wght(l,6)/nvolb
+         ct(ip,jp,k,3) = ct(ip,jp,k,3) + mvp(l,3)*wght(l,6)/nvolb
+         endif
+
+         if (np_cold(i,jp,kp) .gt. 0.0) then
+         nvolb = np_cold(i,jp,kp)*volb
+         ct(i,jp,kp,1) = ct(i,jp,kp,1) + mvp(l,1)*wght(l,7)/nvolb
+         ct(i,jp,kp,2) = ct(i,jp,kp,2) + mvp(l,2)*wght(l,7)/nvolb
+         ct(i,jp,kp,3) = ct(i,jp,kp,3) + mvp(l,3)*wght(l,7)/nvolb
+         endif
+
+         if (np_cold(ip,jp,kp) .gt. 0.0) then
+         nvolb = np_cold(ip,jp,kp)*volb
+         ct(ip,jp,kp,1) = ct(ip,jp,kp,1) + mvp(l,1)*wght(l,8)/nvolb
+         ct(ip,jp,kp,2) = ct(ip,jp,kp,2) + mvp(l,2)*wght(l,8)/nvolb
+         ct(ip,jp,kp,3) = ct(ip,jp,kp,3) + mvp(l,3)*wght(l,8)/nvolb
+         endif
+         
+         l=l+1
+         
+         enddo
+            
+            !Used for periodic boundary conditions
+            call add_boundary_vector(ct)
+!            ct(nx-1,:,:,:) = ct(nx-1,:,:,:)+ct(1,:,:,:)
+!            ct(:,ny-1,:,:) = ct(:,ny-1,:,:)+ct(:,1,:,:)
+!            ct(:,:,nz-1,:) = ct(:,:,nz-1,:)+ct(:,:,1,:)
+            
+            call boundary_vector(ct)
+!            call periodic(ct)
+            
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_ALLREDUCE(ct(:,:,:,:),recvbuf,count,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr)
+            
+            ct(:,:,:,:) = reshape(recvbuf,(/nx,ny,nz,3/))
+            
+            do i=1,nx-1
+                  do j=1,ny-1
+                        do k=1,nz-1
+                              up_ave(i,j,k,1) = 0.5*(ct(i,j,k,1)+ct(i+1,j,k,1))
+                              up_ave(i,j,k,2) = 0.5*(ct(i,j,k,2)+ct(i,j+1,k,2))
+                              up_ave(i,j,k,3) = 0.5*(ct(i,j,k,3)+ct(i,j,k+1,3))
+                        enddo
+                  enddo
+            enddo
+            
+            do i=1,nx
+                  do j=1,ny
+                        do k=1,nz
+!                              temp_p(i,j,k) = (1./3.)*1e6*mion*(sqrt((up2(i,j,k,1) &
+!                                    - up_ave(i,j,k,1)**2)**2 + &
+!                                    (up2(i,j,k,2) - up_ave(i,j,k,2)**2)**2 + & 
+!                                    (up2(i,j,k,3) - up_ave(i,j,k,3)**2)**2))  
+                              temp_p_cold(i,j,k) = (1./3.)*1e6*mion*( &
+                                    up2(i,j,k,1) - up_ave(i,j,k,1)**2 + &
+                                    up2(i,j,k,2) - up_ave(i,j,k,2)**2 + & 
+                                    up2(i,j,k,3) - up_ave(i,j,k,3)**2)
+                        enddo
+                  enddo
+            enddo
+
+            call boundary_scalar(temp_p_cold)
+            
+      end subroutine get_temperature_cold
+      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
       subroutine check_index()
             use dimensions
             use var_arrays, only: Ni_tot,ijkp,m_arr
@@ -1973,5 +3013,230 @@ module gutsp
             endif
             
       end subroutine count_ppc
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           subroutine particle_boundary()
+                      use dimensions
+                      use boundary
+                      use inputs, only: boundx, PI, vsw, dx, dy, km_to_m, beta_particle, kboltz, mion, amp, grad, nf_init,b0_init,mu0,boundx, Lo, q, mO, va_f, vth, va!, removed
+                      use var_arrays, only: xp, vp, Ni_tot, b0, mix_ind
+                      use grid, only: qx,qy,qz
+                      implicit none
+                      integer:: l
+                      REAL:: vx, vy, vz, va_x
+                      
+                      if (boundx .eq. 1) then   !Fully periodic
+                            where (xp(:,1) .gt. qx(nx-1))
+                                  xp(:,1) = qx(1) + (xp(:,1) - qx(nx-1))
+                            endwhere
+                            where (xp(:,1) .le. qx(1))
+                                  xp(:,1) = qx(nx-1) - (qx(1) - xp(:,1))
+                            endwhere
+                            where (xp(:,2) .gt. qy(ny-1))
+                                  xp(:,2) = qy(1) + (xp(:,2) - qy(ny-1))
+                            endwhere
+                            where (xp(:,2) .le. qy(1))
+                                  xp(:,2) = qy(ny-1) - (qy(1) - xp(:,2))
+                            endwhere
+                            where (xp(:,3) .gt. qz(nz-1))
+                                  xp(:,3) = qz(1) + (xp(:,3) - qz(nz-1))
+                            endwhere
+                            where (xp(:,3) .le. qz(1))
+                                  xp(:,3) = qx(nx-1) - (qx(1) - xp(:,1))
+                            endwhere
+                            
+                     endif
+                     
+                     if (boundx .eq. 2) then      ! Periodic in x and y
+                            where (xp(:,1) .gt. qx(nx-1))
+                                  xp(:,1) = qx(1) + (xp(:,1) - qx(nx-1))
+                            endwhere
+
+                            where (xp(:,1) .le. qx(1))
+                                  xp(:,1) = qx(nx-1) - (qx(1) - xp(:,1))
+                            endwhere
+
+
+                            where (xp(:,2) .gt. qy(ny-1))
+                                  xp(:,2) = qy(1) + (xp(:,2) - qy(ny-1))
+                            endwhere
+
+                            where (xp(:,2) .le. qy(1))
+                                  xp(:,2) = qy(ny-1) - (qy(1) - xp(:,2))
+                            endwhere
+                            
+
+                            
+                            ! Particles are put back in at opposite velocity in a random location in x and y
+                            do l=1,Ni_tot
+                                  if (xp(l,3) .le. qz(1)) then
+                                        vp(l,3) = -vp(l,3)
+                                        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+                                        xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
+                                        xp(l,3) = qz(1)+(qz(1) - xp(l,3))
+                                  else if (xp(l,3) .ge. qz(nz-1)) then
+                                        vp(l,3) = -vp(l,3)
+                                        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+                                        xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
+                                        xp(l,3) = qz(nz-1)-(xp(l,3) - qz(nz-1))
+                             endif
+                             enddo
+                      endif
+
+
+
+        if (boundx .eq. 4) then   !Periodic in y only, remove particles that are outside of x and z plane
+                      !Y Direction
+                         where (xp(:,2) .gt. qy(ny-1))
+                               xp(:,2) = qy(1) + (xp(:,2) - qy(ny-1))
+                         endwhere
+                         where (xp(:,2) .le. qy(1))
+                               xp(:,2) = qy(ny-1) - (qy(1) - xp(:,2))
+                         endwhere
+                         
+  
+                !removed = 0
+                
+                
+                !write(*,*) 'removed ion section, vth,va...',vth,va
+                
+                
+                
+                !The particle that leaves z boundaries is reflected but placed at a different spot along the same boundary
+                do l=Ni_tot,1,-1
+                
+                  !x boundaries
+                    if ( (xp(l,1) .lt. qx(1))   .and. (vp(l,1) .lt. 0) )  then
+                        call remove_ion(l)
+                        
+                            !removed = removed+1
+                    else if ( (xp(l,1) .gt. qx(nx)) .and. (vp(l,1) .gt. 0) ) then
+                        call remove_ion(l)
+                        
+                            !removed=removed+1
+
+                    
+                    
+                    else if (xp(l,3) .ge. (qz(nz-1)) ) then
+                            !call remove_ion(l)
+                            !removed = removed+1
+                        vp(l,3) = -vp(l,3)
+
+                        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+                        xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
+                        xp(l,3) = qz(nz-1)-(xp(l,3) - qz(nz-1))
+
+                    else if (xp(l,3) .le. qz(1)) then
+                            !call remove_ion(l)
+                            !removed = removed+1
+                        vp(l,3) = -vp(l,3)
+
+                        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+                        xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
+                        xp(l,3) = qz(1)+(qz(1) - xp(l,3))
+
+
+                    endif
+                    
+                enddo
+
+
+        endif
+                      
+end subroutine particle_boundary
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine get_v_sc(x,y,z) !input cell of SC position
+use mpi
+use grid, only: qy
+use mult_proc
+use dimensions
+use grid,only: qy
+use inputs, only: ppc,dy
+use var_arrays, only: xp,vp,nSC,xSC,vSC,Ni_tot,beta_p,ijkp
+implicit none
+integer, intent(in):: x,y,z
+integer:: ncountperProc,l,i,j,k,ierr
+integer::ncountTotal
+real::xSCperProc(ppc),ySCperProc(ppc),zSCperProc(ppc),vxSCperProc(ppc),vySCperProc(ppc),vzSCperProc(ppc),betaSCperProc(ppc)
+real::xSCtotal(ppc*procnum),ySCtotal(ppc*procnum),zSCtotal(ppc*procnum),vxSCtotal(ppc*procnum),vySCtotal(ppc*procnum),vzSCtotal(ppc*procnum),betaSCtotal(ppc*procnum)
+!if (my_rank .eq. 0) then
+ !j = floor(xp(l,2)/dy)
+            	            			 !write(*,*) 'y1,y2,y3,dy...........',qy(1), qy(2), qy(3),dy
+ncountperProc = 0 
+            do l = 1, Ni_tot
+            
+            !call get_pindex(i,j,k,l)
+                  i=ijkp(l,1)+1
+                  j=ijkp(l,2)+1
+                  k=ijkp(l,3)+1
+            			!if (ijkp(l,2) .eq. 2) then
+            				!if ( ( xp(l,2) .ge. qy(2) ) .and. xp(l,2) .le. (qy(3)) ) then !(ijkp(l,2) .eq. 3) then
+            	            			!write(*,*) 'x,y,z...........',ijkp(l,1),ijkp(l,2),ijkp(l,3)
+            	            			!write(*,*) 'y...........',xp(l,2)
+            	            		!endif
+            	            	!endif
+            	if ( (i .eq. x) .and. (j .eq. y) .and. (k .eq. z) ) then
+		!write(*,*) 'x,y,z...........',ijkp(l,1),ijkp(l,2),ijkp(l,3)
+		
+		
+		
+		
+		ncountperProc = ncountperProc + 1
+            	xSC(ncountperProc,1) = xp(l,1)
+            	xSC(ncountperProc,2) = xp(l,2)
+            	xSC(ncountperProc,3) = xp(l,3)
+            	vSC(ncountperProc,1) = vp(l,1)
+            	vSC(ncountperProc,2) = vp(l,2)
+            	vSC(ncountperProc,3) = vp(l,3)
+            	vSC(ncountperProc,4) = beta_p(l)
+            	
+            	
+            	!ncountperProc = ncountperProc + 1
+            	!xSCperProc(ncountperProc) = xp(l,1)
+            	!ySCperProc(ncountperProc) = xp(l,2)
+            	!zSCperProc(ncountperProc) = xp(l,3)
+            	!vxSCperProc(ncountperProc) = vp(l,1)
+            	!vySCperProc(ncountperProc) = vp(l,2)
+            	!vzSCperProc(ncountperProc) = vp(l,3)
+            	!betaSCperProc(ncountperProc) = beta_p(l)
+            	endif
+            enddo
+nSC = ncountperProc
+!write(*,*) 'ncount per time step...........',ncount
+!endif
+
+            !call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            
+            !call MPI_ALLREDUCE(ncountperProc,ncountTotal,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
+            !nSC = ncountTotal
+	!call MPI_GATHER(procarray,num_loops,MPI_INT,recvbuf,num_loops,MPI_INT,0,MPI_COMM_WORLD,ierr)
+            !call MPI_GATHER(xSCperProc,40,MPI_REAL,xSCtotal,40,MPI_REAL,0,MPI_COMM_WORLD)
+            !call MPI_GATHER(ySCperProc,ppc,MPI_REAL,ySCtotal,ppc,MPI_REAL,0,MPI_COMM_WORLD)
+            !call MPI_GATHER(zSCperProc,ppc,MPI_REAL,zSCtotal,ppc,MPI_REAL,0,MPI_COMM_WORLD)
+           ! 
+           ! call MPI_GATHER(vxSCperProc,ppc,MPI_REAL,vxSCtotal,ppc*procnum,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+           ! call MPI_GATHER(vySCperProc,ppc,MPI_REAL,vySCtotal,ppc*procnum,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+           ! call MPI_GATHER(vzSCperProc,ppc,MPI_REAL,vzSCtotal,ppc*procnum,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+            
+           ! call MPI_GATHER(betaSCperProc,ppc,MPI_REAL,betaSCtotal,ppc*procnum,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+                        
+  	    !if (my_rank .eq. 0) then
+  	     !do l=1,procnum*ppc
+  	     !	xSC(l,1) = xSCtotal(l)
+  	     !	xSC(l,2) = ySCtotal(l)
+  	     !	xSC(l,3) = zSCtotal(l)
+  	     !	
+  	     !	vSC(l,1) = vxSCtotal(l)
+  	     !	vSC(l,2) = vySCtotal(l)
+  	     !	vSC(l,3) = vzSCtotal(l)
+  	     !	vSC(l,4) = betaSCtotal(l)
+  	     !enddo
+  	    !endif
+  	    !write(*,*) 'n,ntotal',Ni_tot,my_rank,ncountperProc,ncountTotal,nSC
+
+            
+            
+            
+end subroutine get_v_sc
 end module gutsp

@@ -113,7 +113,7 @@ module misc
             vol = ((qx(nx-1)-qx(1))*(qy(ny-1)-qy(1))*(qz(nz-1)-qz(1)))
             beta = (Ni_tot_sys/vol)/np_top
             
-            write(*,*) 'beta....',beta
+            !write(*,*) 'beta....',beta
             
       end subroutine get_beta
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -157,6 +157,7 @@ module misc
             !gradP(:,:,:,:) = 0
             
       end subroutine get_gradP
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine get_v_dist()
             use MPI

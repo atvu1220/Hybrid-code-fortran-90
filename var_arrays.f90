@@ -20,6 +20,7 @@ module Var_Arrays
                   nu(nx,ny,nz), &       !collision frequency
                   Ep(Ni_max,3), &       !Ion particle electric field
                   E(nx,ny,nz,3), &        !E field from electron mom. eq.
+                  Ec(nx,ny,nz,3),&
                   temp_p(nx,ny,nz), &   !temperature
                   mnp(nx,ny,nz), &      !mass density
                   beta, beta_p(Ni_max), &       !variable for particle scaling
@@ -32,16 +33,31 @@ module Var_Arrays
                   input_p(3), &
                   input_E, input_Eb, bndry_Eflux, prev_Etot, &
                   grav(nx,ny,nz), &            !gravity term
-                  gradP(nx,ny,nz,3)            !electron pressure gradient
+                  gradP(nx,ny,nz,3),&            !electron pressure gradient
+                  mixed(nx,ny,nz),& !FS ions
+                  ionPos(5,3),& 
+                  testPartPos(nTestParticles_max,3),& !Test Particle Positions
+                  xSC(1000,3), & !Positions of Particles in Cell of Spacecraft Trajectory
+                  vSC(1000,4), & !velocity of particles in cell of Spacecraft Trajectory, then beta of particle (weight)
+                  Ptherm(nx,ny,nz), &
+                  PB(nx,ny,nz), &
+                  Ptotal(nx,ny,nz), &
+                  np_cold(nx,ny,nz), & 
+                  temp_p_cold(nx,ny,nz), &
+                  np_mixed(nx,ny,nz), & 
+                  temp_p_mixed(nx,ny,nz), &
+                  up_cold(nx,ny,nz,3), &
+                  up_mixed(nx,ny,nz,3)
+                  
       
-      integer(4):: Ni_tot, Ni_tot_sys, Ni_init
+      integer(4):: Ni_tot, Ni_tot_sys, Ni_init,nTestParticles, additional_ions,sumAddedPerRow(nz),avgAddedPerRow(nz)
       integer::    vdist_init(-80:80,-80:80), vdist_add(-80:80,-80:80), vpp_init(-80:80,-80:80), vpp_add(-80:80,-80:80)
       
       !Location (indices) of particles in the grid
       
-      integer:: ijkp(Ni_max,3)
+      integer:: ijkp(Ni_max,3),testPartIndex(nTestParticles_max),nSC(1) !number of particles in cell of Spacecraft Trajectory
       logical:: in_bounds(Ni_max)
-      real:: mix_ind(Ni_max)
+      real:: mix_ind(Ni_max), Ptotal_average, PSW_average, Ptotal_sum, density_sum,density_average
       
       !Weight variables for trilinear interpolation
       

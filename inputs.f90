@@ -5,11 +5,11 @@ module inputs
       implicit none
       save
       
-      real:: b0_init, nf_init,dt_frac, vsw, vth, Ni_tot_frac, dx_frac, &
+      real:: b0_init, nf_init,dt_frac, vsw, vth, plasma_beta, Ni_tot_frac, dx_frac, &
             nu_init_frac,lambda_i,m_pu, mO, ppc, nu_init, ion_amu, load_rate, amp, &
-            height_stretch, zsf, etemp0, mion
+            height_stretch, zsf, etemp0, mion,va,va_f, FSDriftSpeed,FSDensityRatio
       real, parameter:: amu=1.6605e-27!, mion = 3.841e-26
-      integer:: mp, nt, nout, loc, grad, nrgrd, boundx
+      integer:: mp, nt, nout, loc, grad, nrgrd, boundx,ddthickness,FSBeamWidth, FSThermalRatio
       integer(4):: Ni_tot_0
 
       real, parameter:: q=1.6e-19         !electron charge
@@ -20,7 +20,7 @@ module inputs
 
 !       time stepping paramters
 
-      integer, parameter:: ntsub = 10    !number of subcycle timesteps
+      integer, parameter:: ntsub = 20    !number of subcycle timesteps
       
 !       Output directory
 
@@ -55,7 +55,7 @@ module inputs
       real:: omega_p                            !ion gyrofrequency
       
 !       Electron ion collision frequency
-      real, parameter:: lww2 = 1.00             !artificial diffusion for the magnetic field update
+      real, parameter:: lww2 = 0.9994!0.9995!0.9994!0.995          !artificial diffusion for the magnetic field update
       real, parameter:: lww1 = (1-lww2)/6.0     !divide by six for nearest neighbor
       
 !       Density scaling paramter, alpha, and ion particle array dims
@@ -86,10 +86,10 @@ module inputs
                  write(*,*) 'nt................',nt
                  read(100,*) nout
                  write(*,*) 'nout..............',nout
-                 read(100,*) vsw
-                 write(*,*) 'vsw...............',vsw
-                 read(100,*) vth
-                 write(*,*) 'vth...............',vth
+                 read(100,*) va_f
+                 write(*,*) 'va_f...............',va_f
+                 read(100,*) plasma_beta
+                 write(*,*) 'plasma_beta...............',plasma_beta
                  read(100,*) Ni_tot_frac
                  write(*,*) 'Ni_tot_frac.......',Ni_tot_frac
                  read(100,*) dx_frac
@@ -112,6 +112,16 @@ module inputs
                  write(*,*) 'electon temperature (eV)...', etemp0
                  read(100,*) boundx
                  write(*,*) 'boundary condition......', boundx
+                 read(100,*) ddthickness
+                 write(*,*) 'discontinuity thickness........',ddthickness
+                 read(100,*) FSBeamWidth
+                 write(*,*) 'Foreshock Beam Width........',FSBeamWidth
+                 read(100,*) FSDensityRatio
+                 write(*,*) 'Foreshock Density Ratio........',FSDensityRatio
+                 read(100,*) FSThermalRatio
+                 write(*,*) 'Foreshock Thermal Ratio........',FSThermalRatio
+                 read(100,*) FSDriftSpeed
+                 write(*,*) 'Foreshock Drift Speed........',FSDriftSpeed
                  read(100,*) out_dir
                  write(*,*) 'output dir........',out_dir
                  
@@ -129,15 +139,19 @@ module inputs
                   
                   mion = amu*ion_amu!3.841e-26
                   write(*,*) 'mion...',mion
+
+                !vth is input as the plasma beta
+                vth = sqrt(plasma_beta*B0_init**2/(mu0*mion*nf_init/1e9))/1e3
+                write(*,*) 'vth...',vth
                   
                   omega_p = q*b0_init/mion
-                  
-                  lambda_i = (3e8/sqrt((nf_init*amp/1e9)*q*q/(8.85e-12*mion)))/1e3
-                                    
+                  vsw=va_f*vth
+                  lambda_i = (3e8/sqrt((nf_init/1e9)*q*q/(8.85e-12*mion)))/1e3
+                  write(*,*) 'lambda_i',lambda_i    
                   dx= lambda_i*dx_frac
-                  dy=lambda_i*dx_frac           !units in km
+                  dy= lambda_i*dx_frac           !units in km
                   delz = lambda_i*dx_frac       !dz at release coordinates
-                  
+                  ddthickness = ddthickness*dx_frac
                   dt= dt_frac*mion/(q*b0_init)  !main time step
                   dtsub_init = dt/ntsub         !subcycle time step
                   vtop = vsw
@@ -161,7 +175,7 @@ module inputs
                   vth_max = 3*vth
                   m_top = mion
                   m_bottom = mion
-                  Lo = 4.0*dx           !gradient scale length of boundary
+                  Lo = lambda_i       !gradient scale length of boundary
                   
                   nu_init = nu_init_frac*omega_p
                   
@@ -179,7 +193,7 @@ module inputs
                   implicit none
                   integer:: i,j,k
                   
-                  real*8:: ak, btot, a1, a2, womega, phi, deltat, va, cwpi
+                  real*8:: ak, btot, a1, a2, womega, phi, deltat, cwpi
                   
       ! Check input paramters
       
@@ -205,6 +219,11 @@ module inputs
                         if (deltat/dtsub_init .le. 2.0) then
                               write(*,*) 'deltat/dtsub....', deltat/dtsub_init
                               write(*,*) 'Field time stp too long...', i,j,k
+                              write(*,*) 'ak,btot...', ak,btot
+                              write(*,*) 'womega,b0_init', womega,b0_init
+                              write(*,*) 'phi,dz_grid(k)...', phi,dz_grid(k)
+                              write(*,*) 'np(i,j,k)', np(1,1,k)
+                              
                               stop
                         endif
                         enddo
@@ -215,23 +234,23 @@ module inputs
                        ! write(*,*) 'deltat, dtsub_init...', deltat, dtsub_init
                       
                         
-                        write(*,*) '  '
-                        write(*,*) 'Bottom paramters...'
-                        write(*,*) '  '
+                        !write(*,*) '  '
+                        !write(*,*) 'Bottom paramters...'
+                        !write(*,*) '  '
                         va = b0_init/sqrt(mu0*m_bottom*np_bottom/1e9)/1e3
                         
-                        write(*,*) 'Alfven veloctiy ......', va
-                        write(*,*) 'Thermal velocity......', vth_top
-                        write(*,*) 'Mach number...........', vbottom/(va+vth_bottom)
+                        !write(*,*) 'Alfven veloctiy ......', va
+                        !write(*,*) 'Thermal velocity......', vth_top
+                        !write(*,*) 'Mach number...........', vbottom/(va+vth_bottom)
                         
-                        write(*,*) 'Thermal gyroradius....', m_bottom*vth_bottom/(q*b0_init),m_bottom*vth_bottom/(q*b0_init)/dx
+                        !write(*,*) 'Thermal gyroradius....', m_bottom*vth_bottom/(q*b0_init),m_bottom*vth_bottom/(q*b0_init)/dx
                         cwpi = 3.0e8/sqrt((np_bottom/1.0e9)*q*q/(epsilon*m_bottom))
-                        write(*,*) 'Ion inertial length...', cwpi/1e3,cwpi/1e3/dx
+                        !write(*,*) 'Ion inertial length...', cwpi/1e3,cwpi/1e3/dx
                         
 !                        write(*,*) 'Particles per cell...', Ni_tot_sys/(nx*nz)
 
                         write(*,*) '  '
-                        write(*,*) 'Top parameters...'
+                        !write(*,*) 'Top parameters...'
                         write(*,*) '  '
                         
                         va = b0_init/sqrt(mu0*m_top*np_top/1e9)/1e3
@@ -243,7 +262,7 @@ module inputs
                         write(*,*) 'Thermal gyroradius...', m_top*vth_top/(q*b0_init), m_top*vth_top/(q*b0_init)/dx
                         cwpi = 3.0e8/sqrt((np_top/1e9)*q*q/(epsilon*m_top))
                         write(*,*) 'Ion inertial length..', cwpi/1e3,cwpi/1e3/dx
-                        
+                        write(*,*) '  '
                         
                   endif
                   

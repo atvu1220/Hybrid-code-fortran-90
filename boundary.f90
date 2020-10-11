@@ -12,6 +12,8 @@ module boundary
                   call periodic(b)
             elseif (boundx .eq. 2) then
                   call periodic_xy(b)
+            elseif (boundx .eq. 4) then
+                call periodic_y(b)
             else
                   write(*,*) 'Boundary conditions are unspecified'
                   stop
@@ -28,6 +30,8 @@ module boundary
                   call periodic_scalar(b)
             elseif (boundx .eq. 2) then
                   call periodic_scalar_xy(b)
+            elseif (boundx .eq. 4) then
+                 call periodic_scalar_y(b)
             else
                   write(*,*) 'Boundary conditions are unspecified'
                   stop
@@ -49,6 +53,9 @@ module boundary
                   b(nx-1,:,:,:) = b(nx-1,:,:,:)+b(1,:,:,:)
                   b(:,ny-1,:,:) = b(:,ny-1,:,:)+b(:,1,:,:)
             endif
+            if (boundx .eq. 4) then
+                  b(:,ny-1,:,:) = b(:,ny-1,:,:)+b(:,1,:,:)
+            endif
       end subroutine add_boundary_vector
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
       subroutine add_boundary_scalar(b)
@@ -63,6 +70,9 @@ module boundary
             endif
             if (boundx .eq. 2) then
                   b(nx-1,:,:) = b(nx-1,:,:)+b(1,:,:)
+                  b(:,ny-1,:) = b(:,ny-1,:)+b(:,1,:)
+            endif
+            if (boundx .eq. 4) then
                   b(:,ny-1,:) = b(:,ny-1,:)+b(:,1,:)
             endif
       end subroutine add_boundary_scalar            
@@ -150,6 +160,53 @@ module boundary
       end subroutine periodic_xy
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine periodic_y(b)
+                  use dimensions
+                  implicit none
+                  real, intent(inout):: b(nx,ny,nz,3)
+                  integer:: i,j,k,m
+                  
+      !       X direction is not periodic
+
+                  do j=1,ny
+                        do k=1,nz
+                              do m=1,3
+!                                    b(1,j,k,m) = b(nx-1,j,k,m)
+!                                    b(nx,j,k,m) = b(2,j,k,m)
+                                        !b(1,j,k,m) = b(2,j,k,m)
+                                     !   b(2,j,k,m) = b(3,j,k,m)
+                                       !b(1,j,k,m) = b(2,j,k,m)
+                                    !   b(nx-1,j,k,m) = b(nx-2,j,k,m)
+                                        b(nx,j,k,m) = b(nx-1,j,k,m)
+                          !      b(2,j,k,m) = b(3,j,k,m)
+                              enddo
+                        enddo
+                  enddo
+
+      !       Y direction
+
+                  do i=1,nx
+                        do k=1,nz
+                              do m=1,3
+                                    b(i,1,k,m) = b(i,ny-1,k,m)
+                                    b(i,ny,k,m) = b(i,2,k,m)
+                              enddo
+                        enddo
+                  enddo
+                  
+      !       Z direction is not periodic
+                  do i=1,nx
+                        do j=1,ny
+                              do m=1,3
+!                                    b(i,j,nz-1,m) = b(i,j,nz-2,m)
+                                    b(i,j,nz,m) = b(i,j,nz-1,m)
+                                    b(i,j,1,m) = b(i,j,2,m)
+                              enddo
+                        enddo
+                  enddo
+                  
+            end subroutine periodic_y
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !---------------------------------------------------------------------
       subroutine tangent_B_zero(b) !normal derivative = 0
 ! The normal derivative of the tangential components is used to 
@@ -177,31 +234,31 @@ module boundary
                   enddo
             enddo
             
-!       Y surfaces
-            do i=2,nx-1
-                  do k=2,nz-1
-                        b(i,1,k,2) = b(i,2,k,2)
-                        b(i,1,k,1) = b(i,2,k,1)
-                        b(i,1,k,3) = b(i,2,k,3)
-                        
-                        b(i,ny,k,1) = b(i,ny-1,k,1)
-                        b(i,ny,k,3) = b(i,ny-1,k,3)
-                        
-                  enddo
-            enddo
+!!       Y surfaces
+!            do i=2,nx-1
+!                  do k=2,nz-1
+!                        b(i,1,k,2) = b(i,2,k,2)
+!                        b(i,1,k,1) = b(i,2,k,1)
+!                        b(i,1,k,3) = b(i,2,k,3)
+!                        
+!                        b(i,ny,k,1) = b(i,ny-1,k,1)
+!                        b(i,ny,k,3) = b(i,ny-1,k,3)
+!                        
+!                  enddo
+!            enddo
             
-!       Z surfaces
-            do i=2,nx-1
-                  do j=2,ny-1
-                        b(i,j,1,3) = b(i,j,2,3)
-                        b(i,j,1,1) = b(i,j,2,1)
-                        b(i,j,1,2) = b(i,j,2,2)
-                       
-                        b(i,j,nz,1) = b(i,j,nz-1,1)
-                        b(i,j,nz,2) = b(i,j,nz-1,2)
-                        
-                  enddo
-            enddo
+!!       Z surfaces
+!           do i=2,nx-1
+!                  do j=2,ny-1
+!                        b(i,j,1,3) = b(i,j,2,3)
+!                        b(i,j,1,1) = b(i,j,2,1)
+!                        b(i,j,1,2) = b(i,j,2,2)
+!                       
+!                        b(i,j,nz,1) = b(i,j,nz-1,1)
+!                        b(i,j,nz,2) = b(i,j,nz-1,2)
+!                        
+!                  enddo
+!            enddo
             
       end subroutine tangent_B_zero
       
@@ -309,7 +366,42 @@ module boundary
             enddo    
             
       end subroutine periodic_scalar_xy
-      
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      subroutine periodic_scalar_y(b)
+            use dimensions
+            implicit none
+            real, intent(inout):: b(nx,ny,nz)
+            integer:: i,j,k
+            
+!       X surfaces are not periodic
+            do j=1,ny
+                  do k=1,nz
+                     !  b(2,j,k) = b(3,j,k)
+                      !  b(1,j,k) = b(2,j,k)
+                      ! b(nx-1,j,k) = b(nx-2,j,k)
+                       b(nx,j,k) = b(nx-1,j,k)
+                  enddo
+            enddo
+
+!       Y surfaces
+            do i=1,nx
+                  do k=1,nz
+                        b(i,1,k) = b(i,ny-1,k)
+                        b(i,ny,k) = b(i,2,k)
+                  enddo
+            enddo
+            
+!       Z surfaces are not periodic
+            do i=1,nx
+                  do j=1,ny
+                       b(i,j,1) = b(i,j,2)
+                       !                        b(i,j,nz-1) = b(i,j,nz-2)
+                        b(i,j,nz) = b(i,j,nz-1)
+                  enddo
+            enddo
+            
+      end subroutine periodic_scalar_y
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine fix_normal_b(b)
             use dimensions
@@ -403,82 +495,54 @@ module boundary
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine fix_tangential_E(E)
             use dimensions
+            use inputs, only: ddthickness
             implicit none
             real, intent(inout):: E(nx,ny,nz,3)
             integer:: j,k
             
-            do j=2,ny   !periodic boundary conditions
-                  do k=2,nz
-                        E(nx,j,k,2) = -2.3
-                        E(nx,j,k,3) = 0.0
+            do j=1,ny   
+                  do k=1,nz
+  
+			if (k .lt. nz/2.0-ddthickness) then
+		!E(2,j,k,2) = 0.0
+			!E(2,j,k,3) = 0.0
+			!E(1,j,k,1) = 0.0
+			
+			!!!!!!!E(1,j,k,2) = 0.0
+			!!!!!!!E(1,j,k,3) = 0.0
+			
+			!E(nx,j,k,2) = 0.0
+			!E(nx-1,j,k,2) = 0.0
+			!E(nx,j,k,3) = 0.0
+			!E(nx-1,j,k,3) = 0.0
+			
+			endif
+			if (k .gt. nz/2.0+ddthickness) then
+			!	E(2,j,k,2) = 0.0
+			!	E(2,j,k,3) = 0.0
+			!E(1,j,k,1) = 0.0
+			
+			!E(1,j,k,2) = 0.0
+			!E(1,j,k,3) = 0.0
+			
+			!E(nx,j,k,1) = 0.0
+			!E(nx-1,j,k,1) = 0.0
+			!E(nx,j,k,2) = 0.0
+			!E(nx-1,j,k,2) = 0.0
+			!E(nx,j,k,3) = 0.0
+			!!E(nx-1,j,k,3) = 0.0
+			endif
+			
+			!E(nx,j,k,2) = 0.0
+			!E(nx-1,j,k,2) = 0.0
+			!E(nx,j,k,3) = 0.0
+			!E(nx-1,j,k,3) = 0.0
                   enddo
             enddo
             
       end subroutine fix_tangential_E
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine particle_boundary()
-            use dimensions
-            use inputs, only: boundx
-            use var_arrays, only: xp, vp, Ni_tot
-            use grid, only: qx,qy,qz
-            implicit none
-            integer:: l
-            
-            if (boundx .eq. 1) then   !Fully periodic
-                  where (xp(:,1) .gt. qx(nx-1))
-                        xp(:,1) = qx(1) + (xp(:,1) - qx(nx-1))
-                  endwhere
-                  where (xp(:,1) .le. qx(1))
-                        xp(:,1) = qx(nx-1) - (qx(1) - xp(:,1))
-                  endwhere
-                  where (xp(:,2) .gt. qy(ny-1))
-                        xp(:,2) = qy(1) + (xp(:,2) - qy(ny-1))
-                  endwhere   
-                  where (xp(:,2) .le. qy(1))
-                        xp(:,2) = qy(ny-1) - (qy(1) - xp(:,2))
-                  endwhere
-                  where (xp(:,3) .gt. qz(nz-1))
-                        xp(:,3) = qz(1) + (xp(:,3) - qz(nz-1))
-                  endwhere
-                  where (xp(:,3) .le. qz(1))
-                        xp(:,3) = qx(nx-1) - (qx(1) - xp(:,1))
-                  endwhere
-                  
-           endif
-           
-           if (boundx .eq. 2) then      ! Periodic in x and y
-                  where (xp(:,1) .gt. qx(nx-1))
-                        xp(:,1) = qx(1) + (xp(:,1) - qx(nx-1))
-                  endwhere
-                  where (xp(:,1) .le. qx(1))
-                        xp(:,1) = qx(nx-1) - (qx(1) - xp(:,1))
-                  endwhere
-                  where (xp(:,2) .gt. qy(ny-1))
-                        xp(:,2) = qy(1) + (xp(:,2) - qy(ny-1))
-                  endwhere   
-                  where (xp(:,2) .le. qy(1))
-                        xp(:,2) = qy(ny-1) - (qy(1) - xp(:,2))
-                  endwhere
-                  
-                  
-                  ! Particles are put back in at opposite velocity in a random location in x and y
-                  do l=1,Ni_tot
-                        if (xp(l,3) .le. qz(1)) then
-                              vp(l,3) = -vp(l,3)
-                              xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
-                              xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
-                              xp(l,3) = qz(1)+(qz(1) - xp(l,3))
-                        else if (xp(l,3) .ge. qz(nz)) then
-                              vp(l,3) = -vp(l,3)
-                              xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
-                              xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1))
-                              xp(l,3) = qz(nz)-(xp(l,3) - qz(nz))
-                        endif
-                  enddo
-            endif
-            
-      end subroutine particle_boundary
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
       
 !!!!!!!!!RANDOM NUMBER GENERATOR!!!!!!!!!!!!!!

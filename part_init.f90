@@ -9,7 +9,7 @@ module part_init
             use mult_proc, only: my_rank
             use grid, only: dx_cell,dy_cell,dz_cell
             use inputs, only: mion,q,mu0,mO,km_to_m,epsilon
-            use var_arrays, only: vp,b0,b1,E,nu,up,np,Ni_tot,beta,beta_p,input_E,prev_Etot,bndry_Eflux,m_arr
+            use var_arrays, only: xp,vp,b0,b1,E,nu,up,np,Ni_tot,beta,beta_p,input_E,prev_Etot,bndry_Eflux,m_arr,ionPos
             implicit none
             real, intent(out):: Euf,EB1,EB1x,EB1y,EB1z,EE,EeP,Evp
             real:: denf,m_q,recvbuf,total_E,aveEvp,norm_E,vol
@@ -67,10 +67,10 @@ module part_init
             
             
             if (my_rank .eq. 0) then
-                  write(*,*) 'Normalized energy.................',total_E/S_input_E
-                  write(*,*) 'Normalized energy (bndry).........',total_E/(S_input_E+bndry_Eflux)
-                  write(*,*) '          particles...............',S_Evp/S_input_E       
-                  write(*,*) '          field...................',(EE+EB1)/S_input_E
+                  !write(*,*) 'Normalized energy.................',total_E/S_input_E
+                  !write(*,*) 'Normalized energy (bndry).........',total_E/(S_input_E+bndry_Eflux)
+                 ! write(*,*) '          particles...............',S_Evp/S_input_E       
+                  !write(*,*) '          field...................',(EE+EB1)/S_input_E
                   write(501) m
                   write(501) S_Evp/S_input_E
                   write(501) (EE+EB1)/S_input_E
@@ -723,5 +723,668 @@ module part_init
             
       end subroutine sw_part_setup_maxwl_mix
       
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mass,mratio,population0,swfsRatio)
+use dimensions
+use boundary
+use inputs, only: PI, vsw, dx, dy, km_to_m, beta_particle, kboltz, mion, amp, grad, nf_init,b0_init,mu0,boundx, Lo, q, mO, va_f, delz,ddthickness, plasma_beta,FSBeamWidth, FSThermalRatio,ddthickness,FSDriftSpeed
+use grid, only: qx,qy,qz,dz_grid
+use gutsp
+use var_arrays, only: np,vp,vp1,xp,input_p,up,Ni_tot,input_E,ijkp,m_arr,mrat,beta,beta_p,wght,grav,temp_p,mix_ind,b0
+implicit none
+integer(4), intent(in):: Ni_tot_1, Ni_tot_2,population0
+real, intent(in):: mratio, mass, vth,swfsRatio
+real:: Lo_y
+integer:: population
+integer:: disp,montecarlo
+real:: vth2, vx, vy, vz, va, va_x, Temp, Tempcalc, pl_beta(nx,ny,nz), fitdist,randpop
+integer:: l,m,i,j,k
 
+disp = 0
+do i=1,nx
+do j=1,ny
+do k=1,nz
+    pl_beta(i,j,k) = plasma_beta
+enddo
+enddo
+enddo
+
+
+do l = Ni_tot_1,Ni_tot_2
+
+
+
+if (population0 .eq. 1) then
+	randpop = (1.0-pad_ranf())
+	if (randpop .le. swfsRatio) then
+		population = 1
+	else
+		population = 2
+	endif
+else
+	population = population0
+endif
+
+    ! X Component
+    if ((population .eq. 1) .or. (population .eq. 5) )then !Solar Wind
+    
+        mix_ind(l) = 0
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
+        !xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1)) !too significant beam
+        
+    else if (population .eq. 2) then !Foreshock
+    
+        mix_ind(l) = 1
+        xp(l,1) = qx(nx-1)-(1.0-pad_ranf())*(qx(2)-qx(1))
+       ! xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1)
+       !xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1))
+    else if ((population .eq. 0) .or. (population .eq. 4)) then !Solar Wind, Everywhere
+    
+        mix_ind(l) = 0
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+        !xp(l,1) = (1.0-pad_ranf())*(qx(nx)-qx(1))
+        
+    else if (population .eq. 3) then !Foreshock, initial Beam
+    
+        mix_ind(l) = 1
+        !xp(l,1) = qx(nx/2 - nx/5)+(1.0-pad_ranf())*(qx(nx)-qx(nx/2-nx/5))
+        !xp(l,1) = qx(nx/2)+(1.0-pad_ranf())*(qx(nx)-qx(nx/2))
+        !xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+        
+      
+    endif
+
+
+    ! Y Component
+    xp(l,2) = qy(1)+(1.0-pad_ranf())*(qy(ny-1)-qy(1) )
+
+
+    ! Z Component
+    if (population .eq. 2) then !Middle Beam
+    	!!xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
+        !xp(l,3) = (qz(nz/2)+qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+        xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+        !xp(l,3) = (qz(nz/2-1)-2*ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+        
+        !Foreshock Bubble
+        !xp(l,3) = qz(3*nz/4) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+    else if (population .eq. 3) then !Middle Beam, with soft edges
+    	!!xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
+        xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+
+        !montecarlo = 0
+        !do 20 while (montecarlo .eq. 0) !Monte Carlo to fit particles onto initial condition
+        !    xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
+        !    fitdist = exp( - ( ( xp(l,3) - ( qz(nz)-qz(1) )  /2.0 ) / ( 50*(qz(2)-qz(1)) ) )**10 )
+        !    if (pad_ranf() .le. fitdist) montecarlo = 1
+        !20 continue
+
+    else if ((population .eq. 4) .or. (population .eq. 5))then !TD
+        !Fill in a bit more in solar wind.
+        montecarlo = 0
+        do 20 while (montecarlo .eq. 0) 
+        	xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
+        	fitdist = 0.5*cosh( (xp(l,3) - qz(nz/2)) / (0.5*ddthickness) )**(-2)
+        	if (pad_ranf() .le. fitdist) montecarlo = 1
+        20 continue
+        !write(*,*) 'z...........',xp(l,3)
+    else
+        xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
+        
+
+    endif
+
+    m_arr(l) = mass
+    mrat(l) = mratio
+
+    
+!if (xp(l,1) .le. qx(1)) then
+!write(*,*) 'x...........',xp(l,1),ijkp(l,1)
+	!endif
+
+
+    va = b0_init/sqrt(mu0*mion*nf_init/1e9)/1e3
+    vth2 = vth!
+
+
+    vx = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+    vy = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+    vz = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+
+
+    if ((population .eq. 1) .or. (population .eq. 5) ) then !Solar Wind, Left Edge
+    
+        vp(l,1) = va_f*va+vx
+        vp(l,2) = vy
+        vp(l,3) = vz
+        beta_p(l) = beta_particle
+
+    else if (population .eq. 2) then !Foreshock Ions, Right Edge
+    
+        vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
+        vp(l,2) = FSThermalRatio*vy
+        vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
+        beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+
+    else if ((population .eq. 0) .or. (population .eq. 4) ) then !Solar Wind Ions, Initially Everywhere
+    
+        vp(l,1) = va_f*va+vx
+        vp(l,2) = vy
+        vp(l,3) = vz
+        beta_p(l) = beta_particle
+
+    else if (population .eq. 3) then !Foreshock Ions, Initially Beam Middle
+    
+        vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
+        vp(l,2) = FSThermalRatio*vy
+        vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
+        beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+
+    endif
+
+ call get_pindex(i,j,k,l)
+
+    do m=1,3
+        vp1(l,m) = vp(l,m)
+        input_E = input_E + 0.5*m_arr(l)*(vp(l,m)*km_to_m)**2/(beta * beta_p(l))
+        input_p(m) = input_p(m) + m_arr(l) * vp(l,m) / (beta * beta_p(l))
+    enddo
+
+enddo
+
+
+
+
+ call get_interp_weights()
+
+ call update_np()
+
+ call update_up(vp)
+
+
+
+
+
+do i=1,nx
+do j=1,ny
+do k=1,nz
+grav(i,j,k) = 0.0
+enddo
+enddo
+enddo
+
+
+
+
+
+end subroutine load_foreshock_Maxwellian
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine calculateTotalPressure()
+use inputs, only: mu0,q, mion,vth_bottom, mO
+use dimensions, only: nx,ny,nz
+use var_arrays, only: temp_p,np, btc, bt, Ptherm, PB, Ptotal, Ptotal_sum, Ptotal_average, Ni_tot
+use mult_proc, only: my_rank
+use gutsp, only: get_temperature
+real:: moverq
+!integer(4), intent(in)::
+!integer(4), intent(out)::
+integer:: i,j,k, cell_count
+
+ cell_count = 0
+moverq= mO/q
+Ptotal_sum = 0
+ call get_temperature()
+
+
+do i=2,nx-1
+do j=2,ny-1
+do k=2,nz-1
+
+Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1.0e-9
+
+PB(i,j,k) = (moverq*moverq*bt(i,j,k,1)*bt(i,j,k,1) + moverq*moverq*bt(i,j,k,2)*bt(i,j,k,2) + moverq*moverq*bt(i,j,k,3)*bt(i,j,k,3) )/(2.0*mu0)
+
+Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+Ptotal_sum= Ptotal_sum + Ptotal(i,j,k)
+ cell_count = cell_count + 1
+
+enddo
+enddo
+enddo
+Ptotal_average = Ptotal_sum/( cell_count )
+
+end subroutine calculateTotalPressure
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine balanceTotalPressure(population)
+use inputs, only: mu0,q, mion,vth_bottom, mO, ddthickness, dx
+use dimensions, only: nx,ny,nz
+use var_arrays, only: temp_p,np, b0, btc, bt, Ptherm, PB, Ptotal, additional_ions, beta, Ptotal_sum, Ptotal_average,Ni_tot, density_sum,density_average, sumAddedPerRow, avgAddedPerRow
+use mult_proc, only: my_rank
+use gutsp, only: get_temperature
+real:: moverq, PthermPP,PSW_average,den_part,Ptherm_sum,PB_sum,Ptherm_average,PB_average
+integer(4), intent(in):: population
+!integer(4), intent(out)::
+integer:: i,j,k, cell_count, addions, Ni_tot_1, Ni_tot_2
+
+
+moverq= mO/q
+den_part = 1/(beta*dx**3)
+
+
+
+
+
+
+
+!if (my_rank .eq. 0) then
+!write(*,*) 'PtotalAverage...PB...Ptherm...PtotalCellDD', Ptotal_average, PB(3,2,nz/2), Ptherm(3,2,nz/2), Ptotal(3,2,nz/2), i, j, k
+!write(*,*) 'End'
+!endif
+
+
+!If the cell is below average, add particles //(vth,Ni_tot_1,Ni_tot_2,mass,mratio,population)
+
+
+
+
+
+
+
+!!Check pressure balance
+!call get_temperature()
+!
+!
+!do i=1,nx
+!do j=1,ny
+!do k=1,nz
+!
+!Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1.0e-9
+!
+!PB(i,j,k) = (moverq*moverq*bt(i,j,k,1)*bt(i,j,k,1) + moverq*moverq*bt(i,j,k,2)*bt(i,j,k,2) + moverq*moverq*bt(i,j,k,3)*bt(i,j,k,3) )/(2.0*mu0)
+!
+!Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+!Ptotal_average = Ptotal_average + Ptotal(i,j,k)
+!cell_count = cell_count + 1
+!
+!
+!
+!
+!!write(*,*) 'temp_p(i,j,k)...np(i,j,k)...bt(i,j,k,1)...bt(i,j,k,2)...bt(i,j,k,3)', temp_p(i,j,k), np(i,j,k), moverq*bt(i,j,k,1), moverq*bt(i,j,k,2), moverq*bt(i,j,k,3)
+!!write(*,*) 'PtotalAverage...PB...Ptherm...PtotalCellDD...cell_count', Ptotal_average, PB(i,j,k), Ptherm(i,j,k), Ptotal(i,j,k), cell_count
+!
+!
+!enddo
+!enddo
+!enddo
+!
+!!Calculate average pressure throughout simulation
+!Ptotal_average = Ptotal_average/( cell_count )
+
+
+
+
+
+
+
+
+
+
+if (population .eq. 0) then !Initialization Pressure Balance
+
+density_sum = 0
+density_average = 0
+Ptotal_sum = 0
+Ptotal_average = 0
+ cell_count = 0
+Ptherm_sum = 0
+PB_sum = 0
+
+do k=1,nz
+sumAddedPerRow(k)=0
+avgAddedPerRow(k)=0
+enddo
+
+!Check pressure balance
+ call get_temperature()
+
+
+do i=3,nx-2
+do j=2,ny-1
+do k=3,nz-2
+
+!Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1.0e-9
+
+Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1.0e-9!*1.602e-19
+PB(i,j,k) = (moverq*moverq*b0(i,j,k,1)*b0(i,j,k,1) + moverq*moverq*b0(i,j,k,2)*b0(i,j,k,2) + moverq*moverq*b0(i,j,k,3)*b0(i,j,k,3) )/(2.0*mu0)
+
+Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+
+if ((k .lt. (nz/2 - 3*ddthickness) ) .or. (k .gt. (nz/2 + 3*ddthickness))) then
+
+Ptotal_sum = Ptotal_sum + Ptotal(i,j,k)
+Ptherm_sum = Ptherm_sum + Ptherm(i,j,k)
+PB_sum = PB_sum + PB(i,j,k)
+ cell_count = cell_count + 1
+!density_sum = density_sum + np(i,j,k)
+
+else
+endif
+
+!write(*,*) 'temp_p(i,j,k)...np(i,j,k)...bt(i,j,k,1)...bt(i,j,k,2)...bt(i,j,k,3)', temp_p(i,j,k), np(i,j,k), moverq*bt(i,j,k,1), moverq*bt(i,j,k,2), moverq*bt(i,j,k,3)
+!write(*,*) 'PtotalAverage...PB...Ptherm...PtotalCellDD...cell_count', Ptotal_average, PB(i,j,k), Ptherm(i,j,k), Ptotal(i,j,k), cell_count
+
+
+enddo
+enddo
+enddo
+
+!Calculate average pressure throughout simulation
+Ptotal_average = Ptotal_sum/( cell_count )
+Ptherm_average = Ptherm_sum/cell_count
+PB_average = PB_sum / cell_count
+!density_average = density_sum/cell_count
+
+
+
+
+
+
+
+do i=2,nx-1
+do j=2,ny-1
+do k=nz/2 - 3*ddthickness,nz/2 + 3*ddthickness
+   additional_ions=0
+
+!
+do while (Ptotal(i,j,k) .lt. 1.0*Ptotal_average)
+!do while (np(i,j,k) .lt. 0.99*density_average)
+!            PthermPP = (Ptherm(i,j,k)/(np(i,j,k)/den_part))
+!            addions = nint((Ptotal_average - Ptotal(i,j,k))/PthermPP)
+!            write(*,*) 'temp_p(i,j,k),np(i,j,k)', temp_p(i,j,k),np(i,j,k)
+!            write(*,*) 'Ptherm(i,j,k)', Ptherm(i,j,k)
+!	     write(*,*) 'Ptherm(i,j,k), PB(i,j,k)', Ptherm(i,j,k),PB(i,j,k)
+!            write(*,*) 'den_part,beta', den_part,beta
+!            write(*,*) 'Pdiff', Ptotal_average,Ptotal(i,j,k)
+!            write(*,*) 'PthermPP,addions', PthermPP,addions
+
+            Ni_tot_1 = Ni_tot +1
+            Ni_tot_2 = Ni_tot + 1!addions
+            Ni_tot = Ni_tot_2
+            call add_ion(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,0,i,j,k) !Population either 1 or 0
+            additional_ions = additional_ions+1!addions
+	    sumAddedPerRow(k)= sumAddedPerRow(k) + 1 
+	    !write(*,*) 'sumAddedPerRow', sumAddedPerRow(k)
+
+!            write(*,*) 'added 1 ion at...Ptotal at cell, PB, Ptherm, PtotalAverage', i,j,k, Ptotal(i,j,k), PB(i,j,k), Ptherm(i,j,k), Ptotal_average
+!            write(*,*) '# of ions in cell', np(i,j,k),Ni_tot
+
+
+            !Check Pressure again after adding particle
+            call get_temperature()
+            !Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1e-9
+            Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1e-9!*1.602e-19
+
+!            PB(i,j,k) = ( moverq*moverq*bt(i,j,k,1)*bt(i,j,k,1) + moverq*moverq*bt(i,j,k,2)*bt(i,j,k,2) + moverq*moverq*bt(i,j,k,3)*bt(i,j,k,3) )/(2.0*mu0)
+
+            Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+        enddo
+if (my_rank .eq. 0) then
+    !write(*,*) 'Ptotal(i,j,k)...Ptotal_average...', Ptotal(i,j,k),Ptotal_average,i,j,k,additional_ions
+endif
+        !write(*,*) 'total added ions in this cell...', additional_ions
+enddo
+enddo
+enddo
+
+
+do k=1,nz
+
+avgAddedPerRow(k) =sumAddedPerRow(k)/(nx-2)
+write(*,*) 'k,sum,avg', k,sumAddedPerRow(k),avgAddedPerRow(k)
+enddo 
+
+!write(*,*) 'Ptotal_average,Ptherm_average,PB_average', Ptotal_average,Ptherm_average,PB_average
+
+
+
+
+else if (population .eq. 1) then !New Solar Wind Particles Pressure Balance
+PSW_average = 0
+ cell_count=0
+
+
+!Check pressure balance
+call get_temperature()
+
+
+do i=1,2
+do j=2,ny-1
+do k=2,nz-1
+
+!Ptherm(i,j,k) = 2.0*abs( temp_p(2,j,k)     )*np(i,j,k)*1.0e-9
+
+Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1e-9!*1.602e-19
+PB(i,j,k) = (moverq*moverq*b0(i,j,k,1)*b0(i,j,k,1) + moverq*moverq*b0(i,j,k,2)*b0(i,j,k,2) + moverq*moverq*b0(i,j,k,3)*b0(i,j,k,3) )/(2.0*mu0)
+!Ptherm(i,j,k) = 2.0*abs(temp_p(1,j,k)+temp_p(2,j,k))*(np(1,j,k)+np(2,j,k))*1e-9/4.0!*1.602e-19
+!PB(1,j,k) = (moverq*moverq*b0(1,j,k,1)*b0(1,j,k,1) + moverq*moverq*b0(1,j,k,2)*b0(1,j,k,2) + moverq*moverq*b0(1,j,k,3)*b0(1,j,k,3) )/(2.0*mu0)
+
+Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+
+if ((k .lt. (nz/2 - 3*ddthickness) ) .or. (k .gt. (nz/2 + 3*ddthickness))) then
+
+PSW_average = PSW_average + Ptotal(i,j,k)
+ cell_count = cell_count + 1
+else
+
+endif
+
+
+
+!write(*,*) 'temp_p(i,j,k)...np(i,j,k)...bt(i,j,k,1)...bt(i,j,k,2)...bt(i,j,k,3)', temp_p(i,j,k), np(i,j,k), moverq*bt(i,j,k,1), moverq*bt(i,j,k,2), moverq*bt(i,j,k,3)
+!write(*,*) 'PtotalAverage...PB...Ptherm...PtotalCellDD...cell_count', Ptotal_average, PB(i,j,k), Ptherm(i,j,k), Ptotal(i,j,k), cell_count
+
+
+enddo
+enddo
+enddo
+
+!Calculate average pressure throughout simulation
+!!PSW_average = PSW_average/( cell_count )
+
+
+
+
+
+
+!write(*,*) 'Ptotal_average', Ptotal_average
+
+
+
+
+do i=2,2
+do j=2,ny-1
+do k=nz/2 - 3*ddthickness, nz/2 + 3*ddthickness
+
+		Ni_tot_1 = Ni_tot + 1
+            Ni_tot_2 = Ni_tot + avgAddedPerRow(k)/2! addions
+            Ni_tot = Ni_tot_2!addions
+            
+            call add_ion(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,1,i,j,k) !Population either 1 or 0
+            
+            
+        	!if (my_rank .eq. 0) then
+         		!write(*,*) 'k,avgAddedPerRow...',k,avgAddedPerRow(k)
+       		!endif
+
+
+
+
+!!!!additional_ions=0
+!!!!!do while (Ptotal(i,j,k) .lt. 1.0*Ptotal_average) !2.4
+!do while (np(i,j,k) .lt. 0.99*density_average)
+            !!!!!PthermPP = (Ptherm(i,j,k)/(np(i,j,k)/den_part))
+!            addions = nint((Ptotal_average - Ptotal(i,j,k))/PthermPP)
+            !addions = nint((PSW_average - (PB(1,j,k) + Ptherm(i,j,k)))/PthermPP)
+            !!!!!!addions = nint((Ptotal_average - (PB(1,j,k) + Ptherm(i,j,k)))/PthermPP)
+!            write(*,*) 'temp_p(i,j,k),np(i,j,k)', temp_p(i,j,k),np(i,j,k)
+!            write(*,*) 'Ptherm(i,j,k)', Ptherm(i,j,k)
+!            write(*,*) 'den_part,beta', den_part,beta
+!            write(*,*) 'Pdiff', Ptotal_average,Ptotal(i,j,k)
+!            write(*,*) 'PthermPP,addions', PthermPP,addions
+ 
+            !!!!!!Ni_tot_1 = Ni_tot +1
+            !!!!!!Ni_tot_2 = Ni_tot + 1! addions
+            !!!!!!Ni_tot = Ni_tot_2!addions
+            
+            !!!!!!call add_ion(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,1,i,j,k) !Population either 1 or 0
+            !!!!!!additional_ions = additional_ions+1!addions
+
+!            if (my_rank .eq. 0)  then
+!                write(*,*) 'PB, PTherm, Ptotal,PSW_average...', PB(3,j,k),Ptherm(i,j,k),Ptotal(i,j,k),PSW_average,i,j,k,additional_ions,Ni_tot_1,Ni_tot_2,Ni_tot
+!                write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...', Ni_tot_1,Ni_tot_2,Ni_tot
+!            endif
+
+!            write(*,*) 'added 1 ion at...Ptotal at cell, PB, Ptherm, PtotalAverage', i,j,k, Ptotal(i,j,k), PB(i,j,k), Ptherm(i,j,k), Ptotal_average
+
+
+            !Check Pressure again after adding particle
+            !!!!!call get_temperature()
+            !!!!!Ptherm(i,j,k) = 2.0*abs(temp_p(i,j,k))*np(i,j,k)*1e-9!abs(   (temp_p(1,j,k)+temp_p(2,j,k))/2.0      )*np(i,j,k)*1e-9*2.0
+	     !Ptherm(i,j,k) = 2.0*abs(temp_p(1,j,k)+temp_p(2,j,k))*(np(1,j,k)+np(2,j,k))*1e-9/4.0!*1.602e-19
+!            PB(i,j,k) = ( moverq*moverq*btc(i,j,k,1)*btc(i,j,k,1) + moverq*moverq*btc(i,j,k,2)*btc(i,j,k,2) + moverq*moverq*btc(i,j,k,3)*btc(i,j,k,3) )/(2.0*mu0)
+
+            !!!!!Ptotal(i,j,k) = Ptherm(i,j,k) + PB(i,j,k)
+!!!!enddo
+        !write(*,*) 'total added ions in this cell...', additional_ions
+!write(*,*) 'PB, PTherm,additional_ions',PB(i,j,k),Ptherm(i,j,k),additional_ions,Ptotal(i,j,k),Ptotal_average
+
+!if (my_rank .eq. 0) then
+!write(*,*) 'PB, PTherm, Ptotal,PSW_average...', PB(3,j,k),Ptherm(i,j,k),Ptotal(i,j,k),PSW_average,i,j,k,additional_ions
+!endif
+
+enddo
+enddo
+enddo
+!Ni_tot = Ni_tot + additional_ions
+!Ptotal(i,j,k),PSW_average,i,j,k,additional_ions,Ni_tot_1,Ni_tot_2,Ni_tot
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+end subroutine balanceTotalPressure
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine add_ion(vth,Ni_tot_1,Ni_tot_2,mass,mratio,population,x,y,z)
+use dimensions
+use boundary
+use inputs, only: PI, vsw, dx, dy, km_to_m, beta_particle, kboltz, mion, amp, grad, nf_init,b0_init,mu0,boundx, Lo, q, mO, va_f, delz
+use grid, only: qx,qy,qz,dz_grid
+use gutsp
+use var_arrays, only: np,vp,vp1,xp,input_p,up,Ni_tot,input_E,ijkp,m_arr,mrat,beta,beta_p,wght,grav,temp_p,mix_ind,b0
+use mult_proc, only: my_rank
+implicit none
+integer(4), intent(in):: Ni_tot_1, Ni_tot_2,population, x, y, z
+real, intent(in):: mratio, mass, vth
+real:: Lo_y
+
+integer:: disp
+real:: vth2, vx, vy, vz, va, va_x, Temp, Tempcalc, pl_beta(nx,ny,nz), sechdist
+integer:: l,m,i,j,k
+
+disp = 0
+
+do i=1,nx
+do j=1,ny
+do k=1,nz
+pl_beta(i,j,k) = 1.0
+enddo
+enddo
+enddo
+
+va = b0_init/sqrt(mu0*mion*nf_init/1e9)/1e3
+
+do l = Ni_tot_1,Ni_tot_2
+mix_ind(l) = 0
+!if (my_rank .eq. 0) then
+!write(*,*) 'mix_ind(l)...',l,mix_ind(l)
+!endif
+if (population .eq. 1) then
+
+    if (x .eq. 1) then
+        xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1)
+    elseif (x .eq. 2) then
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
+    else
+        xp(l,1) = ( qx(x) - qx(1) ) + (1.0-pad_ranf()) * ( qx(2) -qx(1) )
+    endif
+
+xp(l,2) = ( qy(y) - qy(1) ) + (1.0-pad_ranf()) * ( qy(2) -qy(1) )
+xp(l,3) = ( qz(z) - qz(1) ) + (1.0-pad_ranf()) * ( qz(2) -qz(1) )
+
+else if (population .eq. 0) then
+
+xp(l,1) = ( qx(x) - qx(1) ) + (1.0-pad_ranf()) * ( qx(2) -qx(1) )
+xp(l,2) = ( qy(y) - qy(1) ) + (1.0-pad_ranf()) * ( qy(2) -qy(1) )
+xp(l,3) = ( qz(z) - qz(1) ) + (1.0-pad_ranf()) * ( qz(2) -qz(1) )
+
+endif
+
+
+
+
+vx = vth*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+vy = vth*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+vz = vth*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
+
+if (population .eq. 1) then !Solar Wind Ions
+vp(l,1) = va_f*va+vx
+vp(l,2) = vy
+vp(l,3) = vz
+
+else if (population .eq. 0) then
+vp(l,1) = va_f*va+vx
+vp(l,2) = vy
+vp(l,3) = vz
+
+endif
+
+m_arr(l) = mass
+mrat(l) = mratio
+beta_p(l) = beta_particle
+
+ call get_pindex(i,j,k,l)
+
+do m=1,3
+vp1(l,m) = vp(l,m)
+input_E = input_E + 0.5*m_arr(l)*(vp(l,m)*km_to_m)**2/(beta * beta_p(l))
+input_p(m) = input_p(m) + m_arr(l) * vp(l,m) / (beta * beta_p(l))
+enddo
+
+enddo
+
+ call get_interp_weights()
+ call update_np()
+ call update_up(vp)
+
+do i=1,nx
+do j=1,ny
+do k=1,nz
+grav(i,j,k) = 0.0
+enddo
+enddo
+enddo
+
+end subroutine add_ion
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module part_init
