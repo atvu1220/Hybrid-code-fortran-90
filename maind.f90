@@ -22,13 +22,15 @@ program hybrid
       real:: pup(3),puf(3),peb(3)
       character(2):: filenum!(16) !max 16 processors
       character(1):: mstart
-      integer:: ierr,t1,t2,cnt_rt,m,mstart_n,ndiag,seed
+      integer:: ierr,t1,t2,cnt_rt,m,mstart_n,ndiag,seed,ndiag_part
       real(8):: time
       logical:: restart = .false.
-      integer(4):: Ni_tot_sw!,Ni_tot_sys
-      integer:: i,j,k,n,ntf !looping indicies
+      integer(4):: Ni_tot_sw, Ni_tot_1,Ni_tot_2
+      integer:: i,j,k,n,ntf,mm,tl,l !looping indicies
+      integer:: N_1, N_2, Ntot_initial, Nx_boundary, sw_delayTime, FS_boundary, testParticlesAssigned,FSstartupTime
       real (real64) :: dp
       integer, parameter :: dp_kind = kind(dp)
+      real::va_x, sw_speed,swfsRatio
       
 !      filenum = (/'1 ','2 ','3 ','4 ','5 ','6 ','7 ','8 ','9 ', &
 !            '10','11','12','13','14','15','16'/)
@@ -48,7 +50,7 @@ program hybrid
       write(filenum, '(I2)') my_rank
       
 
-      Ni_tot=(nx-2)*(ny-2)*(nz-2)*int(ppc/procnum) !1D
+      Ni_tot=int((nx-2)*(ny-2)*(nz-2)*(ppc/procnum)) !1D
       Ni_tot_0 = Ni_tot
       Ni_tot_sw = Ni_tot
       Ni_tot_sys = Ni_tot*procnum
@@ -64,6 +66,7 @@ program hybrid
       write(mstart, '(I1)') mstart_n
       
       ndiag = 0
+      ndiag_part = 0
       prev_Etot = 1.0
 !      nuei = 0.0
 
@@ -90,8 +93,8 @@ program hybrid
       
 
       
-!      call grd7()
-      call grid_gaussian()
+      call grd7()
+!      call grid_gaussian()
       call grd6_setup(b0,bt,b12,b1,b1p2,nu,input_Eb)
       call get_beta(Ni_tot_sys,beta)
    
@@ -102,10 +105,29 @@ program hybrid
     
       !Initialize particles: use load Maxwellian, or sw_part_setup, etc.
 !      call load_Maxwellian(vth,1,mion,1.0)
-      call load_const_ppc(vth,1,mion,1.0)
+!      call load_const_ppc(vth,1,mion,1.0)
+   !write(*,*) 'np,np_cold', np(50,2,50),np_cold(50,2,50)
+  !Initialize particles: use load Maxwellian, or sw_part_setup, etc.
+  call load_foreshock_Maxwellian(vth_bottom,1,Ni_tot,mion,1.0,0,1.0) !SW
+  Ni_tot_1 = Ni_tot + 1
+  Ni_tot_2 = Ni_tot_1 + Ni_tot*((1.0/procnum)*ddthickness/nz)
+  Ni_tot = Ni_tot_2
+  !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot_',Ni_tot_1,Ni_tot_2,Ni_tot
+ 
+  call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,4,1.0) !TD
+  !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
+ ! call balanceTotalPressure(0)
+  !Ni_tot_1 = Ni_tot+1
+  !Ni_tot_2 = Ni_tot + 16*int((ny-2)*(nx-2)*ppc/procnum)*(float(FSBeamWidth))/4
+ ! Ni_tot_2 = Ni_tot + int(((nx-2)*(ny-2)*(FSBeamWidth)*ppc/procnum))
+  !Ni_tot = Ni_tot_2
+
+  !call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,3,0.0) !FS
   
-!      call load_den_grad(1,mion,1.0)
-!      call count_ppc()
+    
+   !write(*,*) 'FSbeam count', 8*int(((ny-2)*(nx-2)*ppc/procnum)*(float(FSBeamWidth)))
+  
+  
   
       if (my_rank .eq. 0) then
             call check_inputs()     
@@ -120,7 +142,7 @@ program hybrid
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
 !  Check for restart flag
 
-      write(*,*) 'restart status...', restart
+      !write(*,*) 'restart status...', restart
       if ((restart) .and. (mstart_n .gt. 0)) then
 !            if (my_rank .eq. 0) then
             write(*,*) 'opening restar vars....'
@@ -169,14 +191,14 @@ program hybrid
                   close(109)
                   
 ! Write fft parameter file
-                  open(401, file = trim(out_dir)//'fft_11400.dat',status='unknown',form='unformatted')
-                  write(401) dt,nt,omega_p
+!                  open(401, file = trim(out_dir)//'fft_11400.dat',status='unknown',form='unformatted')
+!                  write(401) dt,nt,omega_p
                   
-                  open(402, file = trim(out_dir)//'fft_14000.dat',status='unknown',form='unformatted')
-                  write(402) dt,nt,omega_p
+!                  open(402, file = trim(out_dir)//'fft_14000.dat',status='unknown',form='unformatted')
+!                  write(402) dt,nt,omega_p
                   
-                  open(403, file = trim(out_dir)//'fft_17000.dat',status='unknown',form='unformatted')
-                  write(403) dt,nt,omega_p
+!                  open(403, file = trim(out_dir)//'fft_17000.dat',status='unknown',form='unformatted')
+!                 write(403) dt,nt,omega_p
 
             endif
       
@@ -191,20 +213,28 @@ program hybrid
             open(140,file=trim(out_dir)//'c.aj_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(150,file=trim(out_dir)//'c.E_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(160,file=trim(out_dir)//'c_.energy_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(170,file=trim(out_dir)//'c.np_cold_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(175,file=trim(out_dir)//'c.temp_p_cold_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(176,file=trim(out_dir)//'c.np_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(177,file=trim(out_dir)//'c.temp_p_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+
+            
             
             !diagnostics chex,bill,satnp
             
             open(180,file=trim(out_dir)//'c.up_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(181,file=trim(out_dir)//'c.up_cold_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(182,file=trim(out_dir)//'c.up_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(190,file=trim(out_dir)//'c.momentum_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(192,file=trim(out_dir)//'c.p_conserve_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(300,file=trim(out_dir)//'c.temp_p_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            open(315,file=trim(out_dir)//'c.mrat_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            open(317,file=trim(out_dir)//'c.beta_p_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(315,file=trim(out_dir)//'c.nSC_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(317,file=trim(out_dir)//'c.xSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            open(330,file=trim(out_dir)//'c.up_t_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-!            open(340,file=trim(out_dir)//'c.up_b_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(330,file=trim(out_dir)//'c.vSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(340,file=trim(out_dir)//'c.xp_mixed_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(342,file=trim(out_dir)//'c.test_part_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(350,file=trim(out_dir)//'c.mnp_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             
@@ -217,24 +247,26 @@ program hybrid
             open(140,file=trim(out_dir)//'c.aj.dat',status='unknown',form='unformatted')
             open(150,file=trim(out_dir)//'c.E.dat',status='unknown',form='unformatted')
             open(160,file=trim(out_dir)//'c.energy.dat',status='unknown',form='unformatted')
-            open(170,file=trim(out_dir)//'c.vdist_init.dat',status='unknown',form='unformatted')
-            open(175,file=trim(out_dir)//'c.vdist_add.dat',status='unknown',form='unformatted')
-            open(176,file=trim(out_dir)//'c.vpp_init.dat',status='unknown',form='unformatted')
-            open(177,file=trim(out_dir)//'c.vpp_add.dat',status='unknown',form='unformatted')
+            open(170,file=trim(out_dir)//'c.np_cold.dat',status='unknown',form='unformatted')
+            open(175,file=trim(out_dir)//'c.temp_p_cold.dat',status='unknown',form='unformatted')
+            open(176,file=trim(out_dir)//'c.np_mixed.dat',status='unknown',form='unformatted')
+            open(177,file=trim(out_dir)//'c.temp_p_mixed.dat',status='unknown',form='unformatted')
             
             !diagnostics chex,bill,satnp
             
             open(180,file=trim(out_dir)//'c.up.dat',status='unknown',form='unformatted')
+            open(181,file=trim(out_dir)//'c.up_cold.dat',status='unknown',form='unformatted')
+            open(182,file=trim(out_dir)//'c.up_mixed.dat',status='unknown',form='unformatted')
             open(190,file=trim(out_dir)//'c.momentum.dat',status='unknown',form='unformatted')
             open(192,file=trim(out_dir)//'c.p_conserve.dat',status='unknown',form='unformatted')
             open(300,file=trim(out_dir)//'c.temp_p.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0.dat',status='unknown',form='unformatted')
-            open(315,file=trim(out_dir)//'c.mrat_0.dat',status='unknown',form='unformatted')
-            open(317,file=trim(out_dir)//'c.beta_p_0.dat',status='unknown',form='unformatted')
+            open(315,file=trim(out_dir)//'c.nSC_0.dat',status='unknown',form='unformatted')
+            open(317,file=trim(out_dir)//'c.xSC_0.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake.dat',status='unknown',form='unformatted')
-            open(330,file=trim(out_dir)//'c.up_t.dat',status='unknown',form='unformatted')
-            open(340,file=trim(out_dir)//'c.up_b.dat',status='unknown',form='unformatted')
+            open(330,file=trim(out_dir)//'c.vSC_0.dat',status='unknown',form='unformatted')
+            open(340,file=trim(out_dir)//'c.xp_mixed_0_.dat',status='unknown',form='unformatted')
             open(342,file=trim(out_dir)//'c.test_part.dat',status='unknown',form='unformatted')
             open(350,file=trim(out_dir)//'c.mnp.dat',status='unknown',form='unformatted')
        
@@ -242,33 +274,121 @@ program hybrid
        endif
        
        if (my_rank .gt. 0) then
-!            open(305,file=trim(out_dir)//'c.xp_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-!            open(310,file=trim(out_dir)//'c.vp_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-!            open(315,file=trim(out_dir)//'c.mrat_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-!            open(317,file=trim(out_dir)//'c.beta_p__'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(305,file=trim(out_dir)//'c.xp_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(310,file=trim(out_dir)//'c.vp_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(315,file=trim(out_dir)//'c.nSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(317,file=trim(out_dir)//'c.xSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(330,file=trim(out_dir)//'c.vSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
        endif
        
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Ntot_initial = Ni_tot
+Nx_boundary = 4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
+FS_boundary = (float(FSBeamWidth)/nz)*float(Nx_boundary)*FSDensityRatio/2.50
+!FS_boundary = 2*4*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 10%
+!FS_boundary = 2*2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 5%
+!FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 2.5%
+!FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary) !2*2.5%
+nTestParticles = FS_boundary
+va = b0_init/sqrt(mu0*mion*nf_init/1e9)/1e3
+sw_speed = va_f*va!+vth
+sw_delayTime = ((qx(2)-qx(1))/(sw_speed*dt))!/2.0;
+testParticlesAssigned = 0
+FSstartupTime=int(FS_boundary/sw_delayTime)
+        Nx_boundary = Nx_boundary/sw_delayTime
+        FS_boundary = ceiling(FSDriftSpeed*FS_boundary/(sw_delayTime))
+        swfsRatio= float(Nx_boundary)/ float(( Nx_boundary + FS_boundary))
+if (my_rank .eq. 0) then
+!write(*,*) 'b1(x,:,:),b0', b1(1,51,2,2),b0(1,51,2,2)
+    !write(*,*) 'va', va
+    write(*,*) 'Nx_boundary, Ni_tot', Nx_boundary,Ni_tot
+    write(*,*) 'FS_boundary, Ratio', FS_boundary,swfsRatio
+    write(*,*) 'sw_speed*m*dt, qxdiff', sw_speed*dt, qx(2)-qx(1)
+    write(*,*) 'mpertimestep', (qx(2)-qx(1))/(sw_speed*dt), sw_delayTime
+    write(*,*) '  '
+endif
+
+	!Ni_tot_1 = Ni_tot+1
+        !Ni_tot_2 = Ni_tot + Nx_boundary + FS_boundary
+        !Ni_tot = Ni_tot_2
+
+        !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,swfsRatio) !SW
+        
+
 !       MAIN LOOP
       do m = 1, nt !mstart_n+1, nt
+      !write(*,*) 'Start of Main Loop.....',m
             if (my_rank .eq. 0) then
-                  write(*,*) 'time...', m, m*dt,my_rank
+                  write(*,*) 'time...', m, m*dt, Ni_tot
             endif
-          !  if (m .lt. 600) then
-                  !Call ionizing subroutine  (adds ions to the domain)
-                  call Mass_load_Io(m)
-          !  endif
+
+
+if (m .gt. 1*sw_delayTime-5) then
+	Ni_tot_1 = Ni_tot+1
+        Ni_tot_2 = Ni_tot + Nx_boundary
+        Ni_tot = Ni_tot_2
+!write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,1.0) !SW
+        
+        !Everysolar wind delay time, generate TD as a whole
+        if (mod(m-10,sw_delayTime) == 0) then
+        Ni_tot_1 = Ni_tot + 1
+  	!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(sw_delayTime)/ddthickness*float(ddthickness)/(nz))
+  	Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(ddthickness)/(nz))*float(sw_delayTime)/procnum
+        Ni_tot = Ni_tot_2
+        !write(*,*) 'TD',Ni_tot_2 - Ni_tot_1, Nx_boundary,(0.1*ddthickness/nz)
+       ! write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
+        call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
+        endif
+        
+        
+        !call balanceTotalPressure(1)
+        !do i=2,2
+	!do j=2,ny-1
+	!do k=nz/2 - 3*ddthickness, nz/2 + 3*ddthickness
+	!            Ni_tot_1 = Ni_tot + 1
+       !     Ni_tot_2 = Ni_tot + avgAddedPerRow(k)/2! addions
+        !    Ni_tot = Ni_tot_2!addions
+        !    
+        !    call add_ion(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,1,i,j,k) !Population either 1 or 0
+        !    
+        !    
+        !	if (my_rank .eq. 0) then
+        ! 		write(*,*) 'k,avgAddedPerRow...',k,avgAddedPerRow(k)
+       	!	endif
+        !            
+	!enddo
+	!enddo
+	!enddo
+        
+        !if (m .ge. 1*Nx*sw_delayTime) then 
+        Ni_tot_1 = Ni_tot+1
+        Ni_tot_2 = Ni_tot + FS_boundary
+        Ni_tot = Ni_tot_2
+
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !SW
+        !endif
+endif
+
+       !if (my_rank .eq. 0) then
+       !		write(*,*) 'Ni_tot, SolarWind Ions, Foreshock Ions,Diff,Ratio...', 				Ni_tot,Nx_boundary,FS_boundary,Ni_tot_2-Ni_tot_1,swfsRatio
+       !endif
+                        
+       
             call get_interp_weights()
+
             call update_np()                  !np at n+1/2
+
             call update_up(vp)            !up at n+1/2
-          
+
             !energy diagnostics
             call get_bndry_Eflux(b1,E,bndry_Eflux)
 
             call Energy_diag(Evp,Euf,EB1,EB1x,EB1y,EB1z,EE,EeP)
             call get_gradP()
  
-            call curlB(bt,np,aj)
+            call curlB(b0,bt,np,aj)
             call edge_to_center(bt,btc)
             call extrapol_up()
             call get_Ep()
@@ -281,8 +401,66 @@ program hybrid
          
             call get_vplus_vminus()
             call get_vp_final()
-      
+
             call move_ion_half() !1/2 step ion move to n+1/2
+
+
+
+!Generate Particles on Left and Right Side, 1st half time step
+if (m .gt. 0*sw_delayTime) then
+
+
+    !if (mod(m,sw_delayTime) == 0) then
+
+        !Ni_tot_1 = Ni_tot+1
+       ! Ni_tot_2 = Ni_tot + Nx_boundary + FS_boundary
+       ! Ni_tot = Ni_tot_2
+
+       ! call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,swfsRatio) !SW
+       if (my_rank .eq. 0) then
+       		!write(*,*) '(m-1*Nx*sw_delayTime)/sw_delayTime,m-1*Nx*sw_delayTime, sw_delayTime, FSstartupTime...',(m-1*Nx*sw_delayTime)/sw_delayTime, m-1*Nx*sw_delayTime,sw_delayTime,FSstartupTime
+       		!!write(*,*) 'Ni_tot, SolarWind Ions, Foreshock Ions,Diff,Ratio...', Ni_tot,Nx_boundary,FS_boundary,Ni_tot_2-Ni_tot_1,swfsRatio
+       endif
+    !endif
+           !if (my_rank .eq. 0) then
+       		!write(*,*) '(m-1*Nx*sw_delayTime)/sw_delayTime,m-1*Nx*sw_delayTime, sw_delayTime, FSstartupTime...',(m-1*Nx*sw_delayTime)/sw_delayTime, m-1*Nx*sw_delayTime,sw_delayTime,FSstartupTime
+       !endif
+    
+if (m .ge. 1*Nx*sw_delayTime) then !wait for peaceful SW 
+    !if (mod(m,sw_delayTime) == 0) then  
+       !if ((m-1*Nx*sw_delayTime)/sw_delayTime .lt. FSstartupTime) then
+       !Ni_tot_1 = Ni_tot+1
+       !Ni_tot_2 = Ni_tot + (m-1*Nx*sw_delayTime)/sw_delayTime
+       !Ni_tot = Ni_tot_2
+       !else
+!       Ni_tot_1 = Ni_tot+1
+!       Ni_tot_2 = Ni_tot + FS_boundary
+!       Ni_tot = Ni_tot_2
+       !endif
+
+ !      call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2)  !Foreshock
+       
+    !endif
+endif
+
+
+
+
+
+
+
+
+endif
+
+
+
+
+
+
+
+
+
+!write(*,*) 'before subcycle,b1,b0', b1(1,2,51,2),b0(1,2,51,2)
 
             call get_interp_weights()
 
@@ -301,20 +479,89 @@ program hybrid
             call check_time_step(bt,np,dtsub,ntf)
             
             do n=1,ntf
-                  call curlB(bt,np,aj)
+                  call curlB(b0,bt,np,aj)
+
                   
-                  call predict_B(b12,b1p2,bt,E,aj,up,nu,dtsub)
+                  call predict_B(b0,b12,b1p2,bt,E,aj,up,nu,dtsub)
                   
-                  call correct_B(b1,b1p2,E,aj,up,np,nu,dtsub)
+
+                  
+                  call correct_B(b0,b1,b1p2,E,aj,up,np,nu,dtsub)
+
                   
                   call f_update_tlev(b1,b12,b1p2,bt,b0)
+
                   
             enddo
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!           
  
             call move_ion_half()       !final ion move to n+1
+    
+    if (m .ge. 0.5*Nx*sw_delayTime) then 
+    	if (testParticlesAssigned .eq. 0) then
+    		l=Ni_tot
+    		tl = 1
+		do while (tl .le. nTestParticles_max) !tl= 1,nTestParticles
+			
+			do while (mix_ind(l) .eq. 0)
+				l=l-1
+			end do
+			testPartIndex(tl) = l
+			
+			
+			if (my_rank .eq. 0) then
+    				write(*,*) 'tl', tl,tl,mix_ind(l),l
+			endif
+			l=l-1
+			tl = tl+1
+		enddo
+		do tl= 1,nTestParticles_max
+			testPartPos(tl,1) = xp(testPartIndex(tl),1)
+			testPartPos(tl,2) = xp(testPartIndex(tl),2)
+			testPartPos(tl,3) = xp(testPartIndex(tl),3)
+		enddo
+		testParticlesAssigned=1
+    	endif!testparticle assignment
+    endif!End delay for test particles
+
+!update testparticle positions
+if (m .lt. 0.5*Nx*sw_delayTime) then 
+	do tl= 1,nTestParticles_max
+			testPartPos(tl,1) = 0.0!qx(nx)
+			testPartPos(tl,2) = 0.0!qy(2)
+			testPartPos(tl,3) = 0.0!qz(nz/2.0-ddthickness)
+			
+			!if (my_rank .eq. 0) then
+    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
+			!endif
+	enddo
+else
+	do tl= 1,nTestParticles_max
+		if (testPartIndex(tl) .eq. 0) then
+
+		else
+			testPartPos(tl,1) = xp(testPartIndex(tl),1)
+			testPartPos(tl,2) = xp(testPartIndex(tl),2)
+			testPartPos(tl,3) = xp(testPartIndex(tl),3)
+		endif
+			!if (my_rank .eq. 0) then
+    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
+			!endif
+	enddo
+endif
 
 
+
+
+
+!save velocity of particles at SC position
+ 
+ call get_v_sc(150,2,250)
+                   
+
+ 
+ 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       diagnositc output
             
@@ -326,80 +573,108 @@ program hybrid
                         EeP,input_chex,input_bill
                   write(190) m
                   write(190) pup,puf,peb,input_p
-                  
+                   !write(*,*) 'n...', nSC
+                   !write(*,*) 'x...', xSC
+                   !write(*,*) 'v...', vSC
+                   
                   !fft output
-                  write(401) b1(2,2,11400,1), b1(2,2,11400,2), b1(2,2,11400,3)
-                  write(402) b1(2,2,14000,1), b1(2,2,14000,2), b1(2,2,14000,3)
-                  write(403) b1(2,2,17000,1), b1(2,2,17000,2), b1(2,2,17000,3)
+                  !write(401) b1(2,2,11400,1), b1(2,2,11400,2), b1(2,2,11400,3)
+                  !write(402) b1(2,2,14000,1), b1(2,2,14000,2), b1(2,2,14000,3)
+                  !write(403) b1(2,2,17000,1), b1(2,2,17000,2), b1(2,2,17000,3)
                   
             endif
             
             ndiag = ndiag+1
+            ndiag_part = ndiag_part + 1
             if (ndiag .eq. nout) then
                   call get_temperature()
                   call update_rho()
-                  call get_v_dist()
-!                  call update_mixed(mixed,mix_cnt,Ni_tot,ijkp,mix_ind)
+                  !call get_v_dist()
+                  call update_mixed()
+                  !write(*,*) 'outside update_np_cold', Ni_tot
+                  !Update solar wind ion densities
+		  call update_np_cold()                
+		  !Update solar wind ion temperatures
+		  call get_temperature_cold()               
+		  !Update foreshock ion densities
+		  call update_np_mixed()                
+		  !Update foreshock ion temperatures
+		  call get_temperature_mixed()
+		  !Update solar wind flow
+		  call update_up_cold(vp)
+		  !Update foreshock flow
+		  call update_up_mixed(vp)
+
+ 
                   if (my_rank .eq. 0) then
+                  	call face_to_center(E,Ec)
                         write(110) m
                         write(110) np
                         write(115) m
-                        write(115) np_b
-!                        write(120) m
-!                        write(120) mixed
+!                        write(115) np_b
+                        write(120) m
+                        write(120) mixed
                         write(130) m
                         write(130) bt
                         write(140) m
-                        write(140) aj*alpha*np3
+                        write(140) aj!*alpha*np3
                         write(150) m
-                        write(150) E
+                        write(150) Ec                        
+                        write(170) m
+                        write(170) np_cold
+                        write(175) m
+                        write(175) temp_p_cold/1.6e-19
+                        write(176) m
+                        write(176) np_mixed
+                        write(177) m
+                        write(177) temp_p_mixed/1.6e-19
                         write(180) m
                         write(180) up
+                        write(181) m
+                        write(181) up_cold
+                        write(182) m
+                        write(182) up_mixed
                         write(300) m
                         write(300) temp_p/1.6e-19  !output in eV
-!                        write(305) m
-!                        write(305) xp
-!                        write(310) m
-!                        write(310) vp
-!                        write(315) m
-!                        write(315) mrat
-!                        write(317) m
-!                        write(317) beta_p
+                        !write(305) m
+                        !write(305) xp
+                        !write(305) testPartPos!ionPos(1:5,:)!xp(1:100,:)
+                        !write(310) m
+                        !write(310) vp
+                        write(315) m
+                        write(315) nSC
+                        write(317) m
+                        write(317) xSC
                         write(330) m
-                        write(330) up_t
-!                        write(340) m
-!                        write(340) up_b
+                        write(330) vSC
+                        write(340) m
+                        write(340) testPartPos
                         write(350) m
                         write(350) mnp
-                        
-                        write(170) m
-                        write(170) vdist_init
-                        write(175) m
-                        write(175) vdist_add
-                        write(176) m
-                        write(176) vpp_init
-                        write(177) m
-                        write(177) vpp_add
+
                         
 !                        write(342) m
 !                        write(342) vp(299985:Ni_max,:)
                         
-                        ndiag = 0
-                   endif
-                   
-                   if (my_rank .gt. 0) then
-!                        write(305) m
-!                        write(305) xp
-!                        write(310) m
-!                        write(310) vp
-!                        write(315) m
-!                        write(315) mrat
-!                        write(317) m
-!                        write(317) beta_p
                         
-                        ndiag = 0
-                  endif
+                   endif
+                   ndiag = 0
+              endif
                    
+              if (ndiag_part .eq. nout*4) then
+                   if (my_rank .gt. 0) then
+                        !write(305) m
+                        !write(305) xp
+                       ! write(310) m
+                       ! write(310) vp
+                        write(315) m
+                        write(315) nSC
+                        write(317) m
+                        write(317) xSC
+                        write(330) m
+                        write(330) vSC
+                    endif    
+                        !ndiag_part = 0  
             endif
 !            write(*,*) 'minimum density.....', minval(np(:,:,:))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -449,6 +724,8 @@ program hybrid
       close(176)
       close(177)
       close(180)
+      close(181)
+      close(182)
       close(190)
       close(192)
       close(210)
@@ -466,7 +743,7 @@ program hybrid
       close(350)
 !      close(401)
 !      close(402)
-      close(403)
+!      close(403)
       close(501)
       
       call system_clock(t2,cnt_rt)
