@@ -5,19 +5,81 @@ module gutsf
       subroutine f_update_tlev(b1,b12,b1p2,bt,b0) !loops run 1 o n since values are only being copied
             use dimensions
             use boundary
+            use inputs, only: q, mO,b0_init,pi,ddthickness
             implicit none
-            real, intent(in):: b1p2(nx,ny,nz,3), b0(nx,ny,nz,3)
-            real, intent(inout):: b1(nx,ny,nz,3)
+            real, intent(in):: b0(nx,ny,nz,3)
+            real, intent(inout):: b1(nx,ny,nz,3),b1p2(nx,ny,nz,3)
             real, intent(out):: bt(nx,ny,nz,3), b12(nx,ny,nz,3)
             
             integer:: i,j,k,m
+            real:: eoverm,dtheta
+            integer:: Bsetup
+            
+            
+            
+            Bsetup= 1
+            dtheta = 2*pi / 4 /(2*ddthickness)
+            
+            eoverm = q/mO
+            
+            	!do i=1,nx
+                !  do j=1,ny
+                !        do k=1,nz            
+		!		if (Bsetup .eq. 1) then !Finite Thickness TD
+		!		!for rotating B direction, constant Btot
+		!			if (k .le. nz/2.0-ddthickness) then
+   		!				 b1(i,j,k,1) = b1(i,j,k,1) + b0_init*eoverm
+   		!				 b1(i,j,k,2) = b1(i,j,k,2) + 0.0 
+   		!				 b1(i,j,k,3) = b1(i,j,k,3) + 0.0
+		!			endif
+		!			if ((k .gt. nz/2.0-ddthickness) .and. (k .lt. nz/2.0+ddthickness)) then
+   		!	 			 b1(i,j,k,1) = b1(i,j,k,1) + b0_init*eoverm*cos(dtheta*(k-nz/2+ddthickness))
+   		!				 b1(i,j,k,2) = b1(i,j,k,2) + -b0_init*eoverm*sin(dtheta*(k-nz/2+ddthickness))
+   		!				 b1(i,j,k,3) = b1(i,j,k,3) + 0.0
+		!			endif
+		!			if (k .ge. nz/2.0+ddthickness) then
+    		!				b1(i,j,k,1) = b1(i,j,k,1) + 0.0
+    		!				b1(i,j,k,2) = b1(i,j,k,2) + -b0_init*eoverm
+    		!				b1(i,j,k,3) = b1(i,j,k,3) + 0.0!b0_init*eoverm
+		!			endif
+        	!		else
+!
+ !                             		b1(i,j,k,1) = b0_init*eoverm
+  !                           		 b1(i,j,k,2) = 0.0
+   !                           		b1(i,j,k,3) = 0.0
+    !                          	endif
+     !                   enddo
+      !            enddo
+       !     enddo
+            
+            
+            
+            
+            
+            
+          do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+                                    !bt(i,j,k,m) = b0(i,j,k,m)
+                                    !b12(i,j,k,m) = b0(i,j,k,m)
+                                    !b1(i,j,k,m) = b0(i,j,k,m)
+                                    !b1p2(i,j,k,m) = b0(i,j,k,m)
+                              enddo
+                       enddo
+                  enddo
+            enddo
+            
+           
+            
+            
             
             do i=1,nx
                   do j=1,ny
                         do k= 1,nz
-                              bt(i,j,k,1) = b1p2(i,j,k,1)! + b0(i,j,k,1)
-                              bt(i,j,k,2) = b1p2(i,j,k,2)! + b0(i,j,k,2)
-                              bt(i,j,k,3) = b1p2(i,j,k,3)! + b0(i,j,k,3) 
+                              bt(i,j,k,1) = b1p2(i,j,k,1) + b0(i,j,k,1)
+                              bt(i,j,k,2) = b1p2(i,j,k,2) + b0(i,j,k,2)
+                              bt(i,j,k,3) = b1p2(i,j,k,3) + b0(i,j,k,3) 
                               do m=1,3
                                     b12(i,j,k,m)= b1(i,j,k,m)
                                     b1(i,j,k,m) = b1p2(i,j,k,m)
@@ -25,6 +87,12 @@ module gutsf
                         enddo
                   enddo
             enddo
+            
+            !call fix_normal_b(bt)
+            !call fix_normal_b(b1)
+            !call fix_normal_b(b12)
+            !call fix_normal_b(b1p2)
+
       end subroutine f_update_tlev
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -95,7 +163,7 @@ module gutsf
       end subroutine crossf2
     
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine curlB2(b1,np,aj)
+      subroutine curlB2(b0,b1,np,aj)
 ! Calculates curl B / n*alpha. The resulting 'current' is called aj which is used in several other placed in the code.
 ! This curl is performed on the main cell where B is covariant.  The resulting current is main cell contravariant.
 ! Nnote that dz_cell is used for the cell dimension since dz_grid is not equal to dz_cell on non-uniform grid.
@@ -106,12 +174,23 @@ module gutsf
             use inputs, only: dx,dy,alpha
             implicit none
             real, intent(in):: np(nx,ny,nz)
-            real, intent(inout):: b1(nx,ny,nz,3)
+            real, intent(inout):: b0(nx,ny,nz,3), b1(nx,ny,nz,3)
             real, intent(out):: aj(nx,ny,nz,3)
             real:: curl_B(3), ntot(3)
             integer:: i,j,k,m,ip,jp,kp
             
             call boundary_vector(b1)
+             do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+
+                                    !b1(i,j,k,m) = b0(i,j,k,m)
+ 
+                              enddo
+                        enddo
+                  enddo
+             enddo
 !            call periodic(b1)
 !            call fix_normal_b(b1)
             do i=2,nx-1
@@ -144,7 +223,7 @@ module gutsf
       end subroutine curlB2
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine curlB(b1,np,aj)
+      subroutine curlB(b0,b1,np,aj)
 ! Calculates curl B / n*alpha.  The resulting "current" is called aj
 ! which is used in several other places in the code.  This curl is 
 ! performed on the main cell where B is covarient.  The resulting
@@ -154,17 +233,28 @@ module gutsf
             use dimensions
             use boundary
             use grid, only: dx_cell,dy_cell,dz_cell
-            use inputs, only: alpha
+            use inputs, only: alpha,ddthickness
             implicit none
             real, intent(in):: np(nx,ny,nz)
-            real, intent(inout):: b1(nx,ny,nz,3)
+            real, intent(inout):: b0(nx,ny,nz,3),b1(nx,ny,nz,3)
             real, intent(out) :: aj(nx,ny,nz,3)
             real:: curl_B(3), ntot(3)
             integer:: i,j,k,m,ip,jp,kp
             
             call boundary_vector(b1)
+            do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+
+                                    !b1(i,j,k,m) = b0(i,j,k,m)
+ 
+                              enddo
+                        enddo
+                  enddo
+             enddo
 !            call periodic(b1)
-            
+            !write(*,*) 'b1(x,:,:),b0', b1(1,2,51,2),b0(1,2,51,2)
             do i=2,nx-1
                   do j=2,ny-1
                         do k=2,nz-1
@@ -187,15 +277,59 @@ module gutsf
                               curl_B(3) = (b1(i,j,k,2) - &
                                     b1(i-1,j,k,2))/dx_cell(i) + &
                                     (b1(i,j-1,k,1) - b1(i,j,k,1))/dy_cell(j)
-                                    
+                                   
                                     
                               do m = 1,3
                                     aj(i,j,k,m) = curl_B(m)/(ntot(m)*alpha)
+                                    
+                                    !if ((i.eq.100) .and. (k .eq. 151)) then
+                                       !write(*,*) 'bxj bxk', (b1(i,j,k,3) - &
+                                    !b1(i,j-1,k,3))/dy_cell(j),(b1(i,j,k-1,2) - b1(i,j,k,2))/dz_cell(k) 
+					!write(*,*) 'aj,curl_Bx', aj(100,2,151,1),curl_B(1)
+					!write(*,*) 'bj,bj-1,bk-1,bk', b1(i,j,k,3), b1(i,j-1,k,3),b1(i,j,k-1,2),b1(i,j,k,2)
+				    !endif
                               enddo
                         enddo
                   enddo
             enddo
-            
+                        
+      do i=1,nx      
+          do j=2,ny-1
+                  do k=1,nz
+                        do m=1,3
+                        
+                        	!if (i .ge. nx-1) then
+                        	!	if (k .lt. nz/2.0-ddthickness) then
+						!aj(i,j,k,m) = 0.0
+				!	endif
+				!	if (k .gt. nz/2.0-ddthickness) then
+						!aj(i,j,k,m) = 0.0
+				!	endif
+                              	!	
+                              	!endif
+                              	
+                              	!if (i .le. 1) then
+                              	!	aj(i,j,k,m) = 0.0
+                              	!endif
+                              	!if (k .lt. nz/2.0-ddthickness) then
+				!	aj(2,j,k,m) = 0.0
+				!endif
+				!if (k .gt. nz/2.0-ddthickness) then
+				!	aj(2,j,k,m) = 0.0
+				!endif
+                              	
+                              	!if (k .le. 2) then
+                              	!	aj(i,j,k,m) = 0.0
+                              	!endif
+                              	
+                              	!if (k .ge. nz-1) then
+                              	!	aj(i,j,k,m) = 0.0
+                              	!endif
+                              	
+                        enddo
+                  enddo
+            enddo
+      enddo      
       end subroutine curlB
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -254,7 +388,7 @@ module gutsf
                   enddo
             enddo
             
-!            call face_to_center(a,aa)
+            call face_to_center(a,aa)
             call edge_to_center(bt,btc)
             call crossf2(a,btc,c)
             call grav_to_center(grav,gravc)
@@ -267,10 +401,10 @@ module gutsf
                               gradPmf(1) = 0.5*(gradP(i,j,k,1) + gradP(i+1,j,k,1))
                               gradPmf(2) = 0.5*(gradP(i,j,k,2) + gradP(i,j+1,k,2))
                               gradPmf(3) = 0.5*(gradP(i,j,k,3) + gradP(i,j,k+1,3))
-                              do m =1,2
+                              do m =1,3
                                     E(i,j,k,m) = c(i,j,k,m) + nu(i,j,k)*aj(i,j,k,m) - gradPmf(m)        ! Add in electron pressure
                               enddo
-                                    E(i,j,k,3) = c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3) + gravc(i,j,k) - gradPmf(3) ! Add in gravity term and electron pressure
+                                    !E(i,j,k,3) = c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3) + gravc(i,j,k) - gradPmf(3) ! Add in gravity term and electron pressure
 !                                    write(*,*) 'Electric field.................', c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3)
 !                                    write(*,*) 'Gravity field..................', gravc(i,j,k)
                         enddo
@@ -279,16 +413,17 @@ module gutsf
             
             call boundary_vector(E)
 !            call periodic(E)
+	call fix_tangential_E(E)
       
       end subroutine get_E
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine predict_B(b12,b1p2,bt,E,aj,up,nu,dtsub)
+      subroutine predict_B(b0,b12,b1p2,bt,E,aj,up,nu,dtsub)
 ! Predictor step in magnetic field update
             use dimensions
             use boundary
             implicit none
-            real, intent(in):: b12(nx,ny,nz,3), aj(nx,ny,nz,3),up(nx,ny,nz,3),nu(nx,ny,nz),dtsub
+            real, intent(in):: b0(nx,ny,nz,3), b12(nx,ny,nz,3), aj(nx,ny,nz,3),up(nx,ny,nz,3),nu(nx,ny,nz),dtsub
             real, intent(inout):: bt(nx,ny,nz,3)
             real, intent(out):: b1p2(nx,ny,nz,3), E(nx,ny,nz,3)
             real:: curl_E(nx,ny,nz,3)
@@ -297,6 +432,7 @@ module gutsf
             call get_E(E,bt,aj,up,nu)
             call curlE(E,curl_E)
             
+         
             do i=2,nx-1
                   do j=2,ny-1
                         do k=2,nz-1
@@ -308,12 +444,23 @@ module gutsf
             enddo
             
             call boundary_vector(b1p2)
+            do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+
+              !                      b1p2(i,j,k,m) = b0(i,j,k,m)
+ 
+                              enddo
+                        enddo
+                  enddo
+             enddo
 !            call periodic(b1p2)
             
       end subroutine predict_B
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine get_Ep1(E,b1,b1p2,aj,up,np,nu)
+      subroutine get_Ep1(E,b0,b1,b1p2,aj,up,np,nu)
 ! The main feature here is that E must be calculated at time level
 ! m + 1/2.  That means that we need B at m + 1/2.  So b1p1 is
 ! calculated as 0.5*(b1 + b1p2).  uf and np are already at time level
@@ -327,6 +474,7 @@ module gutsf
             real, intent(in):: b1(nx,ny,nz,3), b1p2(nx,ny,nz,3), up(nx,ny,nz,3), nu(nx,ny,nz), &
                                np(nx,ny,nz)
             real, intent(out):: E(nx,ny,nz,3), aj(nx,ny,nz,3)
+            real,intent(inout):: b0(nx,ny,nz,3)
             real:: b1p1(nx,ny,nz,3), &          !b1 at time level m+1/2
 !                   btp1(nx,ny,nz,3), &          !bt at time level m+1/2
 !                   btp1mf(nx,ny,nz,3), &        !btp1 at contravariant position
@@ -346,7 +494,7 @@ module gutsf
                   enddo
             enddo
             
-            call curlB(b1p1,np,aj)
+            call curlB(b0,b1p1,np,aj)
             call face_to_center(aj,aa)
 
              do m=1,3
@@ -359,7 +507,7 @@ module gutsf
                   enddo
             enddo
             
-!            call face_to_center(a,aa)
+            call face_to_center(a,aa)
 !            call edge_to_face(btp1,btp1mf)
 !            call face_to_center(btp1mf,btc)
             call edge_to_center(b1p1,btc)
@@ -373,10 +521,11 @@ module gutsf
                               gradPmf(1) = 0.5*(gradP(i,j,k,1) + gradP(i+1,j,k,1))
                               gradPmf(2) = 0.5*(gradP(i,j,k,2) + gradP(i,j+1,k,2))
                               gradPmf(3) = 0.5*(gradP(i,j,k,3) + gradP(i,j,k+1,3))
-                              do m=1,2
+                              do m=1,3
                                     E(i,j,k,m) = c(i,j,k,m) + nu(i,j,k)*aj(i,j,k,m) - gradPmf(m)
                               enddo
-                                    E(i,j,k,3) = c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3) + gravc(i,j,k) - gradPmf(3)! Add in gravity term and electron pressure
+                                  
+                                  !  E(i,j,k,3) = c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3) + gravc(i,j,k) - gradPmf(3)! Add in gravity term and electron pressure
 !                                    write(*,*) 'Electric field.................', c(i,j,k,3) + nu(i,j,k)*aj(i,j,k,3)
 !                                    write(*,*) 'Gravity field..................', gravc(i,j,k)
                         enddo
@@ -384,45 +533,80 @@ module gutsf
             enddo
             
             call boundary_vector(E)
+            
+
+	    call fix_tangential_E(E)
 !            call periodic(E)
             
       end subroutine get_Ep1
       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine correct_B(b1,b1p2,E,aj,up,np,nu,dtsub)
+      subroutine correct_B(b0,b1,b1p2,E,aj,up,np,nu,dtsub)
 ! Corrector step in magnetic field update
             use dimensions
             use boundary
             use inputs, only: lww1,lww2
             implicit none
-            real, intent(in):: b1(nx,ny,nz,3),up(nx,ny,nz,3),np(nx,ny,nz),nu(nx,ny,nz),dtsub
-            real, intent(inout):: b1p2(nx,ny,nz,3)
+            real, intent(in):: up(nx,ny,nz,3),np(nx,ny,nz),nu(nx,ny,nz),dtsub
+            real, intent(inout)::  b0(nx,ny,nz,3), b1(nx,ny,nz,3),b1p2(nx,ny,nz,3)
             real, intent(out):: E(nx,ny,nz,3),aj(nx,ny,nz,3)
             real:: curl_E(nx,ny,nz,3)
             integer:: i,j,k,m
             
-            call get_Ep1(E,b1,b1p2,aj,up,np,nu) !E at time level m
+            call get_Ep1(E,b0,b1,b1p2,aj,up,np,nu) !E at time level m
             call curlE(E,curl_E)
+            do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+
+                    !                b1(i,j,k,m) = b0(i,j,k,m)
+ 
+                              enddo
+                        enddo
+                  enddo
+             enddo
             
             do i=2,nx-1
                   do j=2,ny-1
                         do k=2,nz-1
                               do m=1,3
-                                    !grid averaging
-                                    b1p2(i,j,k,m)=lww1*(b1(i+1,j,k,m)+b1(i-1,j,k,m)+  &
+                              !if ((i .ge. nx-3) .or. (i .le. 4) ) then
+                              		b1p2(i,j,k,m)=lww1*(b1(i+1,j,k,m)+b1(i-1,j,k,m)+  &
                                           b1(i,j+1,k,m)+b1(i,j-1,k,m)+ &
                                           b1(i,j,k+1,m)+b1(i,j,k-1,m))+ &
                                           lww2*b1(i,j,k,m) - &
                                           dtsub*curl_E(i,j,k,m)
+                              !else
+                                    !grid averaging
+                            		!b1p2(i,j,k,m)=lww1*(b1(i+1,j,k,m)+b1(i-1,j,k,m)+  &
+                                        !  b1(i,j+1,k,m)+b1(i,j-1,k,m)+ &
+                                        !  b1(i,j,k+1,m)+b1(i,j,k-1,m))+ &
+                                        !  1.0*b1(i,j,k,m) - &
+                                        !  dtsub*curl_E(i,j,k,m)
+                              !            b1p2(i,j,k,m) = b1(i,j,k,m) - dtsub*curl_E(i,j,k,m)
+                              !endif
+                                          
                                           
                                     !no grid averaging
-!                                    b1p2(i,j,k,m) = b1(i,j,k,m) - dtsub*curl_E(i,j,k,m)
+                                !    b1p2(i,j,k,m) = b1(i,j,k,m) - dtsub*curl_E(i,j,k,m)
                               enddo
                         enddo
                   enddo
             enddo
             
             call boundary_vector(b1p2)
+           do i=1,1
+                 do j=1,ny
+                        do k= 1,nz
+                              do m=1,3
+
+                      !              b1p2(i,j,k,m) = b0(i,j,k,m)
+ 
+                              enddo
+                        enddo
+                  enddo
+             enddo
 !            call periodic(b1p2)
             
       end subroutine correct_B

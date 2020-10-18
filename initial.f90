@@ -6,8 +6,8 @@ module initial
       
       
       subroutine grd6_setup(b0,bt,b12,b1,b1p2,nu,input_Eb)
-            use inputs, only: q, mO, PI, b0_top, b0_bottom, b0_init, nu_init, km_to_m, mu0
-            use grid, only: dx_cell, dy_cell, dz_cell
+            use inputs, only: q, mO, PI, b0_top, b0_bottom, b0_init, nu_init, km_to_m, mu0,dx,dy,delz, ddthickness, pi, dx_frac
+            use grid, only: dx_cell, dy_cell, dz_cell,qx,qy,qz
             implicit none
             real, intent(out):: b0(nx,ny,nz,3), &
                                 bt(nx,ny,nz,3), &
@@ -17,36 +17,135 @@ module initial
                                 nu(nx,ny,nz)
             real, intent(inout):: input_Eb                    
                                 
-            real:: eoverm, mO_q, vol
-            real:: b0_1x, b0_2x, b0_1y, b0_2y, phi
-            integer:: i,j,k,m
+            real:: eoverm, mO_q, vol, b0eoverm
+            real:: b0_1x, b0_2x, b0_1y, b0_2y, phi, dtheta
+            integer:: i,j,k,m,Bsetup
+            
+            
+            Bsetup= 5
+            dtheta = 2*pi / 4 /(2*ddthickness)
             
             eoverm = q/mO
             mO_q = mO/q
-            
+            b0eoverm=b0_init*eoverm
             phi = 2.0*PI/180.0
-            
-            b0_1x = b0_top*eoverm*sin(phi)
-            b0_2x = b0_bottom*eoverm*sin(phi)
-            
-            b0_1y = -b0_top*eoverm*cos(phi)
-            b0_2y = -b0_bottom*eoverm*cos(phi)
-            
-            do i=1,nx
+            	do i=1,nx
                   do j=1,ny
-                        do k=1,nz
-                              b0(i,j,k,1) = 0.0
-                              b0(i,j,k,2) = 0.0
-                              b0(i,j,k,3) = b0_init*eoverm
+                        do k=1,nz            
+				if (Bsetup .eq. 1) then !Finite Thickness TD
+				!for rotating B direction, constant Btot
+					if (k .le. nz/2.0-ddthickness) then
+   						 b0(i,j,k,1) = b0_init*eoverm
+   						 b0(i,j,k,2) = 0.0
+   						 b0(i,j,k,3) = 0.0
+					endif
+					if ((k .gt. nz/2.0-ddthickness) .and. (k .lt. nz/2.0+ddthickness)) then
+   			 			b0(i,j,k,1) = b0_init*eoverm*cos(dtheta*(k-nz/2+ddthickness))
+   						 b0(i,j,k,2) = b0_init*eoverm*sin(dtheta*(k-nz/2+ddthickness))
+   						 b0(i,j,k,3) = 0.0
+					endif
+					if (k .ge. nz/2.0+ddthickness) then
+    						b0(i,j,k,1) = 0.0
+    						b0(i,j,k,2) = b0_init*eoverm
+    						b0(i,j,k,3) = 0.0!b0_init*eoverm
+					endif
+        			endif
+        			if (Bsetup .eq. 2) then
+					if (k .le. nz/2.0) then
+   						 b0(i,j,k,1) = b0_init*eoverm!0.0
+   						 b0(i,j,k,2) = 0.0!-b0_init*eoverm
+   						 b0(i,j,k,3) = 0.0
+					endif
+					if (k .ge. nz/2.0) then
+    						b0(i,j,k,1) = 0.0
+    						b0(i,j,k,2) = b0_init*eoverm
+    						b0(i,j,k,3) = 0.0!b0_init*eoverm
+					endif
+                              		!b0(i,j,k,1) = b0_init*eoverm
+                             		 !b0(i,j,k,2) = 0.0
+                              		!b0(i,j,k,3) = 0.0
+                              	endif
+                              	if (Bsetup .eq. 3) then
+                              		if (k .le. nz/2.0) then
+   						b0(i,j,k,1) = b0_init*eoverm*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = 0.0
+   						b0(i,j,k,3) = 0.0
+					endif
+					if (k .ge. nz/2.0) then
+    						b0(i,j,k,1) = 0.0
+    						b0(i,j,k,2) = b0_init*eoverm*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = 0.0
+					endif
+                              	endif
+                              	
+                               if (Bsetup .eq. 4) then !RD
+                              		if (i .le. 2*nx/10.0) then
+   						b0(i,j,k,1) = b0_init*eoverm/(sqrt(2.0))
+   						b0(i,j,k,2) = b0_init*eoverm/(sqrt(2.0))
+   						b0(i,j,k,3) = 0.0
+					endif
+					if (i .ge. 2*nx/10.0) then
+    						b0(i,j,k,1) = b0_init*eoverm
+    						b0(i,j,k,2) = 0.0
+    						b0(i,j,k,3) = 0.0!b0_init*eoverm
+					endif
+                              	endif
+                              if (Bsetup .eq. 5) then !BLMN Coordinates
+                              !Constant B everywhere, BM
+                              b0(i,j,k,1) = b0_init*eoverm*0.25
+                              b0(i,j,k,2) = b0_init*eoverm*0.25
+                              b0(i,j,k,3) = 0.0
+                              		if (k .le. nz/2.0) then !BL bottom
+   						b0(i,j,k,1) = b0(i,j,k,1) + b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = b0(i,j,k,2) - b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,3) = 0.0
+					endif
+					if (k .ge. nz/2.0) then !BL top
+    						b0(i,j,k,1) = b0(i,j,k,1) - b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,2) = b0(i,j,k,2) + b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = 0.0
+					endif
+                              	endif
                         enddo
                   enddo
             enddo
-            
+        !write(*,*) 'during initialization b1(x,:,:),b0', b1(1,2,51,2),b0(1,2,51,2)
 !            input_Eb = 0.0
             do i=1,nx
                   do j=1,ny
                         do k= 1,nz
+                        	!nu(i,j,k) = 2*nu_init*b0_init*eoverm*&
+                        	!( ( exp(-(qx(nx)-qx(i)))**2/(2*dx)**2 ) + (exp(+(qx(1)-qx(i)))**2/(2*dx)**2) ) + nu_init
+                        
+                                !nu(i,j,k) = 2*nu_init*b0eoverm*&
+                                !(1*exp(-(qx(nx)-qx(i))**2/(2.0*dx)**2) + &
+                                !exp(-(qx(1)-qx(i))**2/(2.0*dx)**2)) + nu_init
+                                
+                                
+                                !if (i .le. 5) then
+                        	!	if ((k .ge. nz/2.0-ddthickness) .and. (k .le. nz/2.0+ddthickness)) then
+				!	nu(i,j,k) = 2*nu_init*b0eoverm*&
+                                !(20*exp(-(qx(nx-2)-qx(nx/2))**2/(5.0*dx)**2) + &
+                                !exp(-(qx(2)-qx(nx/2))**2/(5.0*dx)**2)) + nu_init
+				!	!write(*,*) 'x...nu...n0...', i,nu(i,j,k),nu(nx/2,2,nz/2)
+				!	endif
+                              	!endif
+                                
+                                !if (i .ge. nx-5) then
+                        	!	if ((k .ge. nz/2.0-ddthickness) .and. (k .le. nz/2.0+ddthickness)) then
+				!	nu(i,j,k) = 2*nu_init*b0eoverm*&
+                                !(20*exp(-(qx(nx-2)-qx(nx/2))**2/(5.0*dx)**2) + &
+                                !exp(-(qx(2)-qx(nx/2))**2/(5.0*dx)**2)) + nu_init
+				!	!write(*,*) 'x...nu...n0...', i,nu(i,j,k),nu(nx/2,2,nz/2)
+				!	endif
+                              	!endif
+                                
+                               ! if ((j .eq. 2) .and. (k .eq. nz/2) ) then
+                               ! write(*,*) 'x...nu...', i,nu(i,j,k)
+                               ! write(*,*) 'b,eoverm,beoverm', b0_init,eoverm,b0_init*eoverm
+                               ! endif
                               nu(i,j,k) = nu_init
+                          
                               do m = 1,3
                                     bt(i,j,k,m) = b0(i,j,k,m)
                                     b12(i,j,k,m) = b0(i,j,k,m)
@@ -93,6 +192,11 @@ module initial
                   dx_grid(i) = dx
             enddo
 
+            do k = 1,nz
+                qz(k) = k*delz
+                dz_grid(k) = delz
+            enddo
+
             
 !!!!!!!Stretch X direction!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -131,35 +235,35 @@ module initial
 !            zsf = 0.0   !z stretch factor
             !up from center
             
-            do k = rk, rk + nrgrd
-                  dz_grid(k) = delz
-            enddo
+!            do k = rk, rk + nrgrd
+!                  dz_grid(k) = delz
+!            enddo
                       
             
-            do k = rk + nrgrd + 1, nz
-                  dz_grid(k) = delz + zsf*delz*(k-(rk+nrgrd+1))/(nz-(rk+nrgrd+1))
-            enddo
+!            do k = rk + nrgrd + 1, nz
+!                  dz_grid(k) = delz + zsf*delz*(k-(rk+nrgrd+1))/(nz-(rk+nrgrd+1))
+!            enddo
             
-            !down from center
-            do k = rk - nrgrd, rk - 1
-                  dz_grid(k) = delz
-            enddo
-            do k = 1, rk - nrgrd - 1
-                  ind = rk-nrgrd-k
-                  dz_grid(ind) =  delz + zsf*delz*(rk-nrgrd-1-ind)/(rk-nrgrd-1)
-            enddo
+!            !down from center
+!            do k = rk - nrgrd, rk - 1
+!                  dz_grid(k) = delz
+!            enddo
+!            do k = 1, rk - nrgrd - 1
+!                  ind = rk-nrgrd-k
+!                  dz_grid(ind) =  delz + zsf*delz*(rk-nrgrd-1-ind)/(rk-nrgrd-1)
+!            enddo
             
-            qz(1) = delz
+!            qz(1) = delz
             
-            do k=2,nz
-                  qz(k) = qz(k-1)+dz_grid(k)
-            enddo
+!            do k=2,nz
+!                  qz(k) = qz(k-1)+dz_grid(k)
+ !           enddo
             
-            do k=1, nz-1
-                  dz_grid(k) = qz(k+1)-qz(k)
-            enddo
+ !           do k=1, nz-1
+ !                 dz_grid(k) = qz(k+1)-qz(k)
+ !           enddo
             
-            dz_grid(nz) = dz_grid(nz-1)
+ !           dz_grid(nz) = dz_grid(nz-1)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             dz_cell(1) = dz_grid(1)
