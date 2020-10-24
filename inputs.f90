@@ -149,7 +149,7 @@ module inputs
                   lambda_i = (3e8/sqrt((nf_init/1e9)*q*q/(8.85e-12*mion)))/1e3
                   write(*,*) 'lambda_i',lambda_i    
                   dx= lambda_i*dx_frac
-                  dy= lambda_i*dx_frac           !units in km
+                  dy= 2*lambda_i*dx_frac           !units in km
                   delz = lambda_i*dx_frac       !dz at release coordinates
                   ddthickness = ddthickness*dx_frac
                   dt= dt_frac*mion/(q*b0_init)  !main time step
@@ -231,6 +231,7 @@ module inputs
                         enddo
                         
                         write(*,*) 'Courant check (>1)...', deltat/dtsub_init
+                        write(*,*) 'Max Number of Particles...', Ni_max
                        ! write(*,*) 'deltat, dtsub_init...', deltat, dtsub_init
                       
                         

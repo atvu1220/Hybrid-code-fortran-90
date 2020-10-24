@@ -20,8 +20,8 @@
 0.0                				!electron temperature (eV)  
 4                     				!Boundary condition (1: fully periodic   2: Periodic on xy, zero derivative on z 4:periodic on y)
 10           					!Discontinuity half-thickness, in ion gyroradius
-40        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
+100        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
 10.0						!Ratio of densities between foreshock ions over solar wind ions
 20        					!Foreshock Thermal Multiplier
 2.0       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
-'/import/c1/DAYSIDE/atvu/output21/'             !output directory 
+'/import/c1/DAYSIDE/atvu/output17/'             !output directory 

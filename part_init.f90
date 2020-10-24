@@ -865,7 +865,7 @@ endif
         vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
         vp(l,2) = FSThermalRatio*vy
         vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
-        beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+        beta_p(l) = 20*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
 
     else if ((population .eq. 0) .or. (population .eq. 4) ) then !Solar Wind Ions, Initially Everywhere
     
@@ -879,7 +879,7 @@ endif
         vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
         vp(l,2) = FSThermalRatio*vy
         vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
-        beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+        beta_p(l) = 20*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
 
     endif
 

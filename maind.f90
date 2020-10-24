@@ -286,7 +286,7 @@ program hybrid
 
 Ntot_initial = Ni_tot
 Nx_boundary = 4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
-FS_boundary = (float(FSBeamWidth)/nz)*float(Nx_boundary)*FSDensityRatio/2.50
+FS_boundary = (float(FSBeamWidth)/nz)*float(Nx_boundary)*FSDensityRatio/5.0!2.50 for 1/40
 !FS_boundary = 2*4*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 10%
 !FS_boundary = 2*2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 5%
 !FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 2.5%
