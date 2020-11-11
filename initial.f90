@@ -116,12 +116,30 @@ module initial
    						b0(i,j,k,2) = b0(i,j,k,2) + b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
    						b0(i,j,k,3) = 0.0
 					endif
-					if (k .ge. nz/2.0) then !BL top
+					if (k .gt. nz/2.0) then !BL top
     						b0(i,j,k,1) = b0(i,j,k,1) - b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
     						b0(i,j,k,2) = b0(i,j,k,2) - b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
     						b0(i,j,k,3) = 0.0
 					endif
                               endif
+                              if (Bsetup .eq. 7) then !BLMN Coordinates
+                              !Constant B everywhere, BM
+                              b0(i,j,k,1) = b0_init*eoverm*0.25*(1.0+0.5*sqrt(2.0))!0.25
+                              b0(i,j,k,2) = b0_init*eoverm*0.5*(1.0/4.0)*sqrt(2.0)!0.25
+                              b0(i,j,k,3) = 0.0
+                              		if (k .le. nz/2.0) then !BL bottom
+   						b0(i,j,k,1) = b0(i,j,k,1) + 0.25*(1.0-0.5*sqrt(2.0))*b0_init*eoverm*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = b0(i,j,k,2) - 0.5*(1.0/4.0)*sqrt(2.0)*b0_init*eoverm*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,3) = 0.0
+					endif
+					if (k .gt. nz/2.0) then !BL top
+    						b0(i,j,k,1) = b0(i,j,k,1) - 0.25*(1.0-0.5*sqrt(2.0))*b0_init*eoverm*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,2) = b0(i,j,k,2) + 0.5*(1.0/4.0)*sqrt(2.0)*b0_init*eoverm*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = 0.0
+					endif
+                              endif
+                              
+                              
                         enddo
                   enddo
             enddo

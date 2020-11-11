@@ -2,7 +2,7 @@ module dimensions
       implicit none
       save
 
-      integer, parameter:: nx = 202, ny = 3, nz = 502 !1001,1001
+      integer, parameter:: nx = 202, ny = 3, nz = 802 !1001,1001
 	
       integer*4, parameter:: Ni_max = 2000000  
       

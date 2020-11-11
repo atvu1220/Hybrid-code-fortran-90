@@ -730,11 +730,11 @@ use boundary
 use inputs, only: PI, vsw, dx, dy, km_to_m, beta_particle, kboltz, mion, amp, grad, nf_init,b0_init,mu0,boundx, Lo, q, mO, va_f, delz,ddthickness, plasma_beta,FSBeamWidth, FSThermalRatio,ddthickness,FSDriftSpeed
 use grid, only: qx,qy,qz,dz_grid
 use gutsp
-use var_arrays, only: np,vp,vp1,xp,input_p,up,Ni_tot,input_E,ijkp,m_arr,mrat,beta,beta_p,wght,grav,temp_p,mix_ind,b0
+use var_arrays, only: np,vp,vp1,xp,input_p,up,Ni_tot,input_E,ijkp,m_arr,mrat,beta,beta_p,wght,grav,temp_p,mix_ind,b0, b1,E
 implicit none
 integer(4), intent(in):: Ni_tot_1, Ni_tot_2,population0
 real, intent(in):: mratio, mass, vth,swfsRatio
-real:: Lo_y
+real:: Lo_y,eoverm
 integer:: population
 integer:: disp,montecarlo
 real:: vth2, vx, vy, vz, va, va_x, Temp, Tempcalc, pl_beta(nx,ny,nz), fitdist,randpop
@@ -772,12 +772,13 @@ endif
         xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
         !xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1)) !too significant beam
         
-    else if (population .eq. 2) then !Foreshock
+    else if (population .eq. 2 .or. population .eq. 6) then !Foreshock Right
     
         mix_ind(l) = 1
         xp(l,1) = qx(nx-1)-(1.0-pad_ranf())*(qx(2)-qx(1))
        ! xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1)
        !xp(l,1) = (1.0-pad_ranf())*(qx(1))!+qx(1))
+       
     else if ((population .eq. 0) .or. (population .eq. 4)) then !Solar Wind, Everywhere
     
         mix_ind(l) = 0
@@ -790,9 +791,13 @@ endif
         !xp(l,1) = qx(nx/2 - nx/5)+(1.0-pad_ranf())*(qx(nx)-qx(nx/2-nx/5))
         !xp(l,1) = qx(nx/2)+(1.0-pad_ranf())*(qx(nx)-qx(nx/2))
         !xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
-        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx-1)-qx(1))
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(nx)-qx(1))
         
-      
+     else if ((population .eq. 7) .or. (population .eq. 7) )then !Foreshock Left
+    
+        mix_ind(l) = 1
+        xp(l,1) = qx(1)+(1.0-pad_ranf())*(qx(2)-qz(1))
+        
     endif
 
 
@@ -801,38 +806,42 @@ endif
 
 
     ! Z Component
-    if (population .eq. 2) then !Middle Beam
+    if ((population .eq. 2) .or. (population .eq. 7) .or. (population .eq. 3) ) then !Middle Beam
     	!!xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
         !xp(l,3) = (qz(nz/2)+qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
-        xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+        !!!xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1))) !Old below TD
         !xp(l,3) = (qz(nz/2-1)-2*ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
         
+        !Within TD and below.
+        xp(l,3) = (qz(nz/2)-qz(1)) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
         !Foreshock Bubble
         !xp(l,3) = qz(3*nz/4) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
-    else if (population .eq. 3) then !Middle Beam, with soft edges
-    	!!xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
-        xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
-
-        !montecarlo = 0
-        !do 20 while (montecarlo .eq. 0) !Monte Carlo to fit particles onto initial condition
-        !    xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
-        !    fitdist = exp( - ( ( xp(l,3) - ( qz(nz)-qz(1) )  /2.0 ) / ( 50*(qz(2)-qz(1)) ) )**10 )
-        !    if (pad_ranf() .le. fitdist) montecarlo = 1
-        !20 continue
-
+   ! else if (population .eq. 3) then !Middle Beam, with soft edges
+    !	!!xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
+    !    xp(l,3) = (qz(nz/2)-qz(1)-ddthickness*(qz(2)-qz(1))) - (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+!
+   !     !montecarlo = 0
+    !    !do 20 while (montecarlo .eq. 0) !Monte Carlo to fit particles onto initial condition
+    !    !    xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz)-qz(1))
+    !    !    fitdist = exp( - ( ( xp(l,3) - ( qz(nz)-qz(1) )  /2.0 ) / ( 50*(qz(2)-qz(1)) ) )**10 )
+    !    !    if (pad_ranf() .le. fitdist) montecarlo = 1
+    !    !20 continue
+!
     else if ((population .eq. 4) .or. (population .eq. 5))then !TD
         !Fill in a bit more in solar wind.
         montecarlo = 0
         do 20 while (montecarlo .eq. 0) 
         	xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
-        	fitdist = 0.5*cosh( (xp(l,3) - qz(nz/2)) / (0.5*ddthickness) )**(-2)
+        	fitdist = 2*0.5*cosh( (xp(l,3) - qz(nz/2)) / (0.5*ddthickness) )**(-2)
         	if (pad_ranf() .le. fitdist) montecarlo = 1
         20 continue
-        !write(*,*) 'z...........',xp(l,3)
-    else
-        xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
+        !write(*,*) 'z...........',xp(l,3)/101
         
-
+    else if (population .eq. 6) then !Top FS
+            xp(l,3) = (qz(nz/2)-qz(1)) + (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+            
+    else !All z
+        xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
     endif
 
     m_arr(l) = mass
@@ -851,39 +860,47 @@ endif
     vx = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
     vy = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
     vz = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
-
-
-    if ((population .eq. 1) .or. (population .eq. 5) ) then !Solar Wind, Left Edge
+ 
+eoverm = q/mO
+    if ((population .eq. 1) .or. (population .eq. 5) .or. (population .eq. 0) .or. (population .eq. 4)) then !Solar Wind, Left Edge
     
         vp(l,1) = va_f*va+vx
         vp(l,2) = vy
         vp(l,3) = vz
         beta_p(l) = beta_particle
 
-    else if (population .eq. 2) then !Foreshock Ions, Right Edge
-    
-        vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
-        vp(l,2) = FSThermalRatio*vy
-        vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
-        beta_p(l) = 20*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+    else if ((population .eq. 2) .or. (population .eq. 3) .or. (population .eq. 7)) then !Foreshock Ions, Right Edge
+    	call get_pindex(i,j,k,l)
+        vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx + ( E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,2) = FSThermalRatio*vy                       - ( E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,3) = FSThermalRatio*vz                       + ( E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        beta_p(l) = 200*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
 
-    else if ((population .eq. 0) .or. (population .eq. 4) ) then !Solar Wind Ions, Initially Everywhere
-    
-        vp(l,1) = va_f*va+vx
-        vp(l,2) = vy
-        vp(l,3) = vz
-        beta_p(l) = beta_particle
+   ! else if ((population .eq. 0) .or. (population .eq. 4) ) then !Solar Wind Ions, Initially Everywhere
+    !
+    !    vp(l,1) = va_f*va+vx
+    !    vp(l,2) = vy
+    !    vp(l,3) = vz
+    !    beta_p(l) = beta_particle
 
-    else if (population .eq. 3) then !Foreshock Ions, Initially Beam Middle
-    
-        vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
-        vp(l,2) = FSThermalRatio*vy
-        vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
-        beta_p(l) = 20*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
-
+    !else if (population .eq. 3) then !Foreshock Ions, Initially Beam Middle
+    !
+    !    vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx
+    !    vp(l,2) = FSThermalRatio*vy
+    !    vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
+    !    beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+        
+    else if (population .eq. 6) then !Foreshock Ions, Top half above TD
+        vp(l,1) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vx + (E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2))/(  (b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2)  )
+        vp(l,2) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vy - (E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))
+        vp(l,3) = FSThermalRatio*vz + (E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))!1.0*va_f*va+va_f*vz
+        beta_p(l) = 200*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+        
+       ! write(*,*) 'vx,vy,vz,vexbx, vexb2, vexb3',vx, vy, vz,(E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2)), - (E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1)), (E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1))
+       !write(*,*) 'b0_init,b1...', sqrt(b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2), b1(i,j,k,1),b1(i,j,k,2),sqrt(b1(i,j,k,1)**2 + b1(i,j,k,2)**2 ),(E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2)),(E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))
     endif
 
- call get_pindex(i,j,k,l)
+ 
 
     do m=1,3
         vp1(l,m) = vp(l,m)
