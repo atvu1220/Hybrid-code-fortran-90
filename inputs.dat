@@ -3,25 +3,25 @@
 17                   				!mass of pickup ion species
 5e15                 				!minimum density (km^-3) (40)
 100.0                  				!maximum density (scaled by minimum density) (50)
-0.02                  				!particle time step (fraction of omega_i) (0.08 is the default)
-20000                 				!number of time steps (10000)
+0.01                  				!particle time step (fraction of omega_i) (0.08 is the default)
+40000                 				!number of time steps (10000)
 25                   				!diagnostic output interval (100)
-4.0                   				!flow speed (km/s)
+10.0                   				!flow speed (km/s)
 1.0                  				!Plasma beta-------------thermal speed for Maxwellian (40 km/s)
 1.0                   				!Ni_tot initial (fraction of Ni_max)
 1.0                   				!grid size as fraction of lambda_i
 3000                   				!density scale height (multiple of dx) (3000 for full torus)
 1.0                   				!scale height to start stretching
 1.0                   				!dz stretching scale as a fraction of lambda_i
-0.0002		      				!nu_init_frac, fraction of gyrofrequency for nu_init (0.002)
-144                   				!number of particles per cell per species 
+0.002		      				!nu_init_frac, fraction of gyrofrequency for nu_init (0.002)
+100                   				!number of particles per cell per species 
 2020                   				!Location of fft analysis (integer)
 10.0                   				!mass load rate (kg/s)
 0.0                				!electron temperature (eV)  
 4                     				!Boundary condition (1: fully periodic   2: Periodic on xy, zero derivative on z 4:periodic on y)
-20           					!Discontinuity half-thickness, in ion gyroradius
+5           					!Discontinuity half-thickness, in ion gyroradius
 300        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
-2.5						!Ratio of densities between foreshock ions over solar wind ions
-8.0        					!Foreshock Thermal Multiplier
+4.0						!Ratio of densities between foreshock ions over solar wind ions
+20.0        					!Foreshock Thermal Multiplier
 2.0       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
-'/import/c1/DAYSIDE/atvu/Run38/'            	!output directory 
+'/import/c1/DAYSIDE/atvu/Run54/'            	!output directory 

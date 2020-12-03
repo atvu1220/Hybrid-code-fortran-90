@@ -1,6 +1,7 @@
 program hybrid
       
       use mpi
+      use boundary
       use dimensions
       use Var_Arrays
       use mult_proc
@@ -27,7 +28,7 @@ program hybrid
       logical:: restart = .false.
       integer(4):: Ni_tot_sw, Ni_tot_1,Ni_tot_2
       integer:: i,j,k,n,ntf,mm,tl,l !looping indicies
-      integer:: N_1, N_2, Ntot_initial, Nx_boundary, sw_delayTime, FS_boundary, testParticlesAssigned,FSstartupTime, FS_initial, TD_initial,TD_boundary
+      integer:: N_1, N_2, Ntot_initial, Nx_boundary, sw_delayTime, FS_boundary, testParticlesAssigned,FSstartupTime, FS_initial, TD_initial,TD_boundary, TD_procCount, TD_procRand
       real (real64) :: dp
       integer, parameter :: dp_kind = kind(dp)
       real::va_x, sw_speed,swfsRatio
@@ -111,10 +112,12 @@ program hybrid
   call load_foreshock_Maxwellian(vth_bottom,1,Ni_tot,mion,1.0,0,1.0) !SW
   !write(*,*) 'Total Particles',Ni_tot
   
+  
+  !Initial TD
   Ni_tot_1 = Ni_tot + 1
   !Ni_tot_2 = Ni_tot_1 + int(Ni_tot*((1.0/procnum)*ddthickness/nz))
   !TD_initial = int(0.05*(float(Ni_tot)*(float(ddthickness)/float(nz))))
-  TD_initial = int(float(Ni_tot)/float(nz))
+  TD_initial = ceiling(float(Ni_tot)/float(nz))
   Ni_tot_2 = Ni_tot_1 + TD_initial
   !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD,TD_intial', Ni_tot_1,Ni_tot_2, TD_initial
   Ni_tot = Ni_tot_2
@@ -128,14 +131,17 @@ program hybrid
     	
   !Load Foreshock 
   Ni_tot_1 = Ni_tot + 1
-  FS_initial = (float(FSBeamWidth)/nz)*int((nz-2)*(ny-2)*(nx-2)*ppc/procnum)*FSDensityRatio/0.5!2.5!
+  FS_initial = (float(FSBeamWidth)/nz)*int((nz-2)*(ny-2)*(nx-2)*ppc/procnum)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5!
   Ni_tot_2 = Ni_tot_1 + FS_initial
   Ni_tot = Ni_tot_2
   call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,3,1.0) !Initial FS Beam
   !write(*,*) 'FS Particles',FS_initial
+  
   if (my_rank .eq. 0) then
   write(*,*) 'Total Particles, TD Particles, Foreshock Particles',Ni_tot, TD_initial, FS_initial
   end if
+  
+  
   !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
  ! call balanceTotalPressure(0)
   !Ni_tot_1 = Ni_tot+1
@@ -307,7 +313,7 @@ program hybrid
 
 Ntot_initial = Ni_tot
 Nx_boundary = 4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
-FS_boundary = (float(FSBeamWidth)/nz)*float(Nx_boundary)*FSDensityRatio/0.5!2.5! 5.0 for 1/20 !2.50 for 1/40
+FS_boundary = 1+(float(FSBeamWidth)/nz)*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40
 !FS_boundary = 2*4*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 10%
 !FS_boundary = 2*2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 5%
 !FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 2.5%
@@ -325,11 +331,11 @@ FSstartupTime=int(FS_boundary/sw_delayTime)
 if (my_rank .eq. 0) then
 !write(*,*) 'b1(x,:,:),b0', b1(1,51,2,2),b0(1,51,2,2)
     !write(*,*) 'va', va
-    write(*,*) 'Nx_boundary, Ni_tot', Nx_boundary,Ni_tot
-    write(*,*) 'FS_boundary, Ratio', FS_boundary,swfsRatio
+    write(*,*) 'Nx_boundary per Time Step, Nx_boundary per cell', Nx_boundary,4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
+    write(*,*) 'FS_boundary, FS_boundary per cell', FS_boundary,(float(FSBeamWidth)/nz)*float(4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4)*(FSDensityRatio/(100.0/ForeshockBeta))
     write(*,*) 'TD_boundary,TD_initial', TD_boundary, TD_initial
     write(*,*) 'sw displacement in one timestep, qxdiff', sw_speed*dt, qx(2)-qx(1)
-    write(*,*) 'mpertimestep', (qx(2)-qx(1))/(sw_speed*dt), sw_delayTime
+    write(*,*) 'mpertimestep, rounded', (qx(2)-qx(1))/(sw_speed*dt), sw_delayTime
     write(*,*) 'Processor Count', procnum
     write(*,*) '  '
 endif
@@ -379,17 +385,38 @@ if (m .gt. 0.5*sw_delayTime ) then
 !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
         call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,1.0) !SW
         
+            !    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+       ! !do TD_procCount=1,TD_boundary
+        !	TD_procRand= nint(pad_ranf()*procnum)
+       ! 	write(*,*) 'TD_procRand',TD_procRand,my_rank
+        ! 		if (my_rank .eq. TD_procRand) then
+        ! 			Ni_tot_1 = Ni_tot + 1
+        ! 			Ni_tot_2 = Ni_tot_1 
+        !			Ni_tot = Ni_tot_2
+        !			call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
+        !			write(*,*) 'TD proc Count, TD_Boundary ',TD_procCount,TD_boundary,TD_procRand
+        ! 		endif
+!
+        !!enddo
+        !call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+        
         !Everysolar wind delay time, generate TD as a whole
-        if (mod(m-10,sw_delayTime) == 0) then
+        !!!!!!if (mod(m-10,sw_delayTime) == 0) then
+        if (mod(m,int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)) .eq. 0) then
+        
         Ni_tot_1 = Ni_tot + 1
   	!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(sw_delayTime)/ddthickness*float(ddthickness)/(nz))
   	!!!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(ddthickness)/(nz))*float(sw_delayTime)/procnum
-  	Ni_tot_2 = Ni_tot_1 + TD_boundary
+  	Ni_tot_2 = Ni_tot_1 !+TD_initial/ int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial) !TD_boundary
         Ni_tot = Ni_tot_2
         !write(*,*) 'TD',Ni_tot_2 - Ni_tot_1, Nx_boundary,(0.1*ddthickness/nz)
         !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD',Ni_tot_1,Ni_tot_2
+        !write(*,*) 'Producing 1 particles per timestep',int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)
         call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
+        
+        !!!!!!!endif
         endif
+        
         
         
         !call balanceTotalPressure(1)
@@ -619,7 +646,7 @@ endif
 
 !save velocity of particles at SC position
  
- call get_v_sc(150,2,250)
+ !call get_v_sc(150,2,250)
                    
 
  
