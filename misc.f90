@@ -140,6 +140,7 @@ module misc
 
                               np1 =  0.5*(np(i,j+1,k)+np(i,j,k))
                               gdnp = (np(i,j+1,k)-np(i,j,k))/dy_grid(j)
+                              !write(*,*) 'np1',np1,np(i,1,k),np(i,2,k),np(i,3,k),np(i,4,k)
                               a0 = kboltz*etemp/(mion*np1)
 !                              a(i,j,k,2) = a0*gdnp
                               gnpf(i,j,k,2) = a0*gdnp

@@ -1,8 +1,7 @@
 #!/bin/sh
 
 #SBATCH --partition=t1standard
-#SBATCH --ntasks=800
-#SBATCH --tasks-per-node=28
+#SBATCH --ntasks=100
 #SBATCH --mail-user=atvu@alaska.edu
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END

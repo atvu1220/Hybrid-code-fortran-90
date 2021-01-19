@@ -7,9 +7,9 @@ module inputs
       
       real:: b0_init, nf_init,dt_frac, vsw, vth, plasma_beta, Ni_tot_frac, dx_frac, &
             nu_init_frac,lambda_i,m_pu, mO, ppc, nu_init, ion_amu, load_rate, amp, &
-            height_stretch, zsf, etemp0, mion,va,va_f, FSDriftSpeed,FSDensityRatio
+            height_stretch, zsf, etemp0, mion,va,va_f, FSDriftSpeed,FSDensityRatio, ForeshockBeta, TDpressureBalance, TDcellBalance
       real, parameter:: amu=1.6605e-27!, mion = 3.841e-26
-      integer:: mp, nt, nout, loc, grad, nrgrd, boundx,ddthickness,FSBeamWidth, FSThermalRatio
+      integer:: mp, nt, nout, loc, grad, nrgrd, boundx,ddthickness,FSBeamWidth, FSThermalRatio 
       integer(4):: Ni_tot_0
 
       real, parameter:: q=1.6e-19         !electron charge
@@ -55,7 +55,7 @@ module inputs
       real:: omega_p                            !ion gyrofrequency
       
 !       Electron ion collision frequency
-      real, parameter:: lww2 = 0.99925!0.9995!0.9994!0.995          !artificial diffusion for the magnetic field update
+      real, parameter:: lww2 = 0.999!9!1.0!0.9990!0.9995!0.9995!0.9994!0.995          !artificial diffusion for the magnetic field update
       real, parameter:: lww1 = (1-lww2)/6.0     !divide by six for nearest neighbor
       
 !       Density scaling paramter, alpha, and ion particle array dims
@@ -122,6 +122,8 @@ module inputs
                  write(*,*) 'Foreshock Thermal Ratio........',FSThermalRatio
                  read(100,*) FSDriftSpeed
                  write(*,*) 'Foreshock Drift Speed........',FSDriftSpeed
+                 read(100,*) TDpressureBalance
+                 write(*,*) 'TD Pressure Balance........',TDpressureBalance
                  read(100,*) out_dir
                  write(*,*) 'output dir........',out_dir
                  
@@ -136,8 +138,11 @@ module inputs
                   implicit none
                   
                   
-                  
-                  mion = amu*ion_amu!3.841e-26
+                  ForeshockBeta = 200!20.0!0.5; !Weighting of Foreshock Ions. 0.5% = 1/200, 1 Foreshock Ion to 1/200 of Solar Wind Ions, FSBeta =20  means that one foreshock particle is 5%
+                  TDcellBalance = -0.5*ddthickness*(-1.0 + log(cosh(1.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance
+                  write(*,*) 'TDcellBalance...',TDcellBalance
+                  write(*,*) 'Foreshock Beta...',ForeshockBeta
+		  mion = amu*ion_amu!3.841e-26
                   write(*,*) 'mion...',mion
 
                 !vth is input as the plasma beta
@@ -180,7 +185,7 @@ module inputs
                   nu_init = nu_init_frac*omega_p
                   
                   alpha = (mu0/1.0e3)*q*(q/mion)  !mH...determines particle scaling
-                  
+                  write(*,*) 'alpha...', alpha
                   nrgrd = nint(grad*height_stretch)
                   
             end subroutine initparameters

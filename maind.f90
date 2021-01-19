@@ -18,7 +18,7 @@ program hybrid
       
       implicit none
       
-      real:: Evp,Euf,EB1,EB1x,EB1y,EB1z,EE,EeP,input_EeP
+      real:: Evp,Euf,EB1,EB1x,EB1y,EB1z,EE,EeP,input_EeP,vB0x,vB0y,vB0z
       real:: input_chex, input_bill,dtsub
       real:: pup(3),puf(3),peb(3)
       character(2):: filenum!(16) !max 16 processors
@@ -116,12 +116,15 @@ program hybrid
   !Initial TD
   Ni_tot_1 = Ni_tot + 1
   !Ni_tot_2 = Ni_tot_1 + int(Ni_tot*((1.0/procnum)*ddthickness/nz))
-  !TD_initial = int(0.05*(float(Ni_tot)*(float(ddthickness)/float(nz))))
-  TD_initial = ceiling(float(Ni_tot)/float(nz))
+  !TD_initial = int((float(Ni_tot)*(float(ddthickness)/float(nz))))
+  !TD_initial = ceiling(float(Ni_tot)/float(nz))
+!*   TD_initial = int((nx-2)*(ny-2)*2*0.3375*ppc/procnum) !for 1dd
+   TD_initial = procnum*floor(float(int((nx-2)*(ny-2)*2*0.5*TDcellBalance*TDpressureBalance*ppc/procnum))/procnum) !for 15dd, 5.06 for 15dd (30depletionwidth), then divide by two because B drops only 25%, 4.24664 for 15dd (15depletionwidith), 0.283 for 1dd, 2.83 for 20dd, 2.53 for 16dd
+  !Integral of 1 - 0.5 -0.5*tanh(x/ddthickness). For ddthickness = 12, 4.
   Ni_tot_2 = Ni_tot_1 + TD_initial
   !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD,TD_intial', Ni_tot_1,Ni_tot_2, TD_initial
   Ni_tot = Ni_tot_2
-  !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot_',Ni_tot_1,Ni_tot_2,Ni_tot
+  !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot_',Ni_tot_1,Ni_tot_2,Ni_tot,TD_initial
   call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,4,1.0) !TD
   !write(*,*) 'TD Particles',int(Ni_tot*((1.0/procnum)*ddthickness/nz))
     !write(*,*) 'TD Particles',int(Ni_tot*((0.5*ddthickness/nz)))
@@ -130,11 +133,11 @@ program hybrid
     	
     	
   !Load Foreshock 
-  Ni_tot_1 = Ni_tot + 1
+!*  Ni_tot_1 = Ni_tot + 1
   FS_initial = (float(FSBeamWidth)/nz)*int((nz-2)*(ny-2)*(nx-2)*ppc/procnum)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5!
-  Ni_tot_2 = Ni_tot_1 + FS_initial
-  Ni_tot = Ni_tot_2
-  call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,3,1.0) !Initial FS Beam
+!*  Ni_tot_2 = Ni_tot_1 + FS_initial
+!*  Ni_tot = Ni_tot_2
+!*  call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,3,1.0) !Initial FS Beam
   !write(*,*) 'FS Particles',FS_initial
   
   if (my_rank .eq. 0) then
@@ -244,7 +247,7 @@ program hybrid
             open(175,file=trim(out_dir)//'c.temp_p_cold_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(176,file=trim(out_dir)//'c.np_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(177,file=trim(out_dir)//'c.temp_p_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-
+	    open(315,file=trim(out_dir)//'c.gradP_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             
             
             !diagnostics chex,bill,satnp
@@ -257,7 +260,7 @@ program hybrid
             open(300,file=trim(out_dir)//'c.temp_p_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            !open(315,file=trim(out_dir)//'c.nSC_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            !open(315,file=trim(out_dir)//'c.gradP_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(317,file=trim(out_dir)//'c.xSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
@@ -278,7 +281,7 @@ program hybrid
             open(175,file=trim(out_dir)//'c.temp_p_cold.dat',status='unknown',form='unformatted')
             open(176,file=trim(out_dir)//'c.np_mixed.dat',status='unknown',form='unformatted')
             open(177,file=trim(out_dir)//'c.temp_p_mixed.dat',status='unknown',form='unformatted')
-            
+            open(315,file=trim(out_dir)//'c.gradP.dat',status='unknown',form='unformatted')
             !diagnostics chex,bill,satnp
             
             open(180,file=trim(out_dir)//'c.up.dat',status='unknown',form='unformatted')
@@ -289,7 +292,7 @@ program hybrid
             open(300,file=trim(out_dir)//'c.temp_p.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0.dat',status='unknown',form='unformatted')
-            !open(315,file=trim(out_dir)//'c.nSC_0.dat',status='unknown',form='unformatted')
+            !open(315,file=trim(out_dir)//'c.gradP_0.dat',status='unknown',form='unformatted')
             !open(317,file=trim(out_dir)//'c.xSC_0.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_0.dat',status='unknown',form='unformatted')
@@ -304,7 +307,7 @@ program hybrid
        	    open(120,file=trim(out_dir)//'c.mixed_'//trim(filenum)//'.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_'//trim(filenum)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_'//trim(filenum)//'.dat',status='unknown',form='unformatted')
-            !open(315,file=trim(out_dir)//'c.nSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            !open(315,file=trim(out_dir)//'c.gradP_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(317,file=trim(out_dir)//'c.xSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
        endif
@@ -312,8 +315,11 @@ program hybrid
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 Ntot_initial = Ni_tot
-Nx_boundary = 4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
-FS_boundary = 1+(float(FSBeamWidth)/nz)*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40
+Nx_boundary = int((nz-2)*(ny-2)*(1)*ppc/procnum)
+!FS_boundary = (float((FSBeamWidth-int(ddthickness/4)))/(nz-2))*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40
+FS_boundary = (float((FSBeamWidth))/(nz-2+1*TDcellBalance*TDpressureBalance))*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40, 2.83 for 20dd
+  !FS_initial = (float(FSBeamWidth)/nz)*int((nz-2)*(ny-2)*(nx-2)*ppc/procnum)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5!
+  !FS_boundary = FS_initial/(nx-2)
 !FS_boundary = 2*4*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 10%
 !FS_boundary = 2*2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 5%
 !FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 2.5%
@@ -325,27 +331,39 @@ sw_delayTime = ((qx(2)-qx(1))/(sw_speed*dt))!/2.0;
 testParticlesAssigned = 0
 FSstartupTime=int(FS_boundary/sw_delayTime)
         Nx_boundary = ceiling(Nx_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
-        FS_boundary = ceiling(FSDriftSpeed*FS_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
+        FS_boundary = floor(FSDriftSpeed*FS_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
         TD_boundary = ceiling(TD_initial/float(nx-2)/ ((qx(2)-qx(1))/(sw_speed*dt)))!!int(0.05*float(Nx_boundary)*(float(ddthickness)/(nz)))
         swfsRatio= float(Nx_boundary)/ float(( Nx_boundary + FS_boundary))
 if (my_rank .eq. 0) then
 !write(*,*) 'b1(x,:,:),b0', b1(1,51,2,2),b0(1,51,2,2)
     !write(*,*) 'va', va
-    write(*,*) 'Nx_boundary per Time Step, Nx_boundary per cell', Nx_boundary,4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
-    write(*,*) 'FS_boundary, FS_boundary per cell', FS_boundary,(float(FSBeamWidth)/nz)*float(4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4)*(FSDensityRatio/(100.0/ForeshockBeta))
+    write(*,*) 'Nx_boundary per Time Step, Nx_boundary particles in column', Nx_boundary,4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4
+    write(*,*) 'FS_boundary, FS_boundary particles in column', FS_boundary,(float(FSBeamWidth)/nz)*float(4*int((nz-2)*(ny-2)*(1)*ppc/procnum)/4)*(FSDensityRatio/(100.0/ForeshockBeta))
     write(*,*) 'TD_boundary,TD_initial', TD_boundary, TD_initial
     write(*,*) 'sw displacement in one timestep, qxdiff', sw_speed*dt, qx(2)-qx(1)
     write(*,*) 'mpertimestep, rounded', (qx(2)-qx(1))/(sw_speed*dt), sw_delayTime
     write(*,*) 'Processor Count', procnum
+    write(*,*) 'FS_initial', FS_initial,(nz-2)*(nx-2)*(ny-2)
     write(*,*) '  '
 endif
+
+
+	!do k=1, nz
+        !        write(*,*) 'b0(nx,2,k), bmag',k,b0(nx,2,k,1),b0(nx,2,k,1)**2,b0(nx,2,k,2),sqrt( b0(nx,2,k,1)**2 + b0(nx,2,k,2)**2 + b0(nx,2,k,3)**2 )
+        !enddo
+        
 !write(*,*) 'Proc number', my_rank
 	!Ni_tot_1 = Ni_tot+1
         !Ni_tot_2 = Ni_tot + Nx_boundary + FS_boundary
         !Ni_tot = Ni_tot_2
 
         !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,swfsRatio) !SW
-        
+        do k=nz/2-2*ddthickness,nz/2+2*ddthickness
+        	if (my_rank .eq. 0) then
+        		!write(*,*) 'k,Bx,Btot,cos(theta)...',k,b0(nx,2,k,1),b0(nx,2,k,2),(  sqrt( b0(nx,2,k,1)**2+b0(nx,2,k,2)**2+b0(nx,2,k,3)**2 )),-FSDriftSpeed*va_f*( b0(nx,2,k,1) / (  sqrt( b0(nx,2,k,1)**2+b0(nx,2,k,2)**2+b0(nx,2,k,3)**2 ) )  ) + ( (va_f)*b0(nx,2,k,2) )*b0(nx,2,k,2) / ( ( b0(nx,2,k,1)**2+b0(nx,2,k,2)**2+b0(nx,2,k,3)**2 ) )
+                endif
+                
+        enddo
 
 !       MAIN LOOP
       do m = 1, nt !mstart_n+1, nt
@@ -354,14 +372,38 @@ endif
                   write(*,*) 'time...', m, m*dt, Ni_tot
             endif
 
-
-
+do k=nz/2-2*ddthickness,nz/2+2*ddthickness
+		if (my_rank .eq. 0) then
+        		!write(*,*) 'gradP...',gradP(nx/2,2,k,1),gradP(nx/2,2,k,2),gradP(nx/2,2,k,3)
+                endif
+enddo
 
             call get_interp_weights()
 
             call update_np()                  !np at n+1/2
 
             call update_up(vp)            !up at n+1/2
+		!if (m .eq. 1 ) then
+		!	do i=1,nx
+                !  	do j=1,ny
+                !        do k=1,nz 
+		!    		vB0x = -( ( up(i,j,k,2)*b0(i,j,k,3) - up(i,j,k,3)*b0(i,j,k,2) )  )
+    		!		vB0y =  ( ( up(i,j,k,1)*b0(i,j,k,3) - up(i,j,k,3)*b0(i,j,k,1) )  )
+    		!		vB0z = -( ( up(i,j,k,1)*b0(i,j,k,2) - up(i,j,k,2)*b0(i,j,k,1) )  )
+    		!	enddo
+    		!	enddo
+    		!	enddo
+    		!	do i=1,nx
+                !  	do j=1,ny
+                !        do k=1,nz 
+    		!	    	ExB(i,j,k,1) =  ( vB0y*b0(i,j,k,3) - vB0z*b0(i,j,k,2) ) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
+       		!		ExB(i,j,k,2) = -( vB0x*b0(i,j,k,3) - vB0z*b0(i,j,k,1) ) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
+       		!		ExB(i,j,k,3) =  ( vB0x*b0(i,j,k,2) - vB0y*b0(i,j,k,1) ) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
+       		!	enddo
+    		!	enddo
+    		!	enddo
+    	!
+		!endif
 
             !energy diagnostics
             call get_bndry_Eflux(b1,E,bndry_Eflux)
@@ -379,12 +421,8 @@ endif
 
 
 if (m .gt. 0.5*sw_delayTime ) then
-	Ni_tot_1 = Ni_tot+1
-        Ni_tot_2 = Ni_tot + Nx_boundary
-        Ni_tot = Ni_tot_2
-!write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
-        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,1.0) !SW
-        
+
+        !write(*,*) 'Ni_tot_1,Ni_tot_2,Ni_tot...',Ni_tot_1,Ni_tot_2,Ni_tot
             !    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
        ! !do TD_procCount=1,TD_boundary
         !	TD_procRand= nint(pad_ranf()*procnum)
@@ -402,12 +440,13 @@ if (m .gt. 0.5*sw_delayTime ) then
         
         !Everysolar wind delay time, generate TD as a whole
         !!!!!!if (mod(m-10,sw_delayTime) == 0) then
-        if (mod(m,int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)) .eq. 0) then
+       ! write(*,*) 'right before TD injection'
+       if ((mod(m,int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)) .eq. 0) .and. TDpressureBalance .eq. 1.0) then
         
         Ni_tot_1 = Ni_tot + 1
   	!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(sw_delayTime)/ddthickness*float(ddthickness)/(nz))
   	!!!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(ddthickness)/(nz))*float(sw_delayTime)/procnum
-  	Ni_tot_2 = Ni_tot_1 !+TD_initial/ int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial) !TD_boundary
+  	Ni_tot_2 = Ni_tot_1! +TD_initial/ int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial) !TD_boundary
         Ni_tot = Ni_tot_2
         !write(*,*) 'TD',Ni_tot_2 - Ni_tot_1, Nx_boundary,(0.1*ddthickness/nz)
         !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD',Ni_tot_1,Ni_tot_2
@@ -437,19 +476,28 @@ if (m .gt. 0.5*sw_delayTime ) then
 	!enddo
 	!enddo
 	!enddo
+	
+	
+        Ni_tot_1 = Ni_tot+1
+        Ni_tot_2 = Ni_tot + Nx_boundary
+        Ni_tot = Ni_tot_2
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,1.0) !SW
         
         !if (m .ge. 1*Nx*sw_delayTime) then 
         Ni_tot_1 = Ni_tot+1
         Ni_tot_2 = Ni_tot + FS_boundary
         Ni_tot = Ni_tot_2
-
-        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
-      
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,7,0.0) !FS Bot Left
+        
         Ni_tot_1 = Ni_tot+1
         Ni_tot_2 = Ni_tot + FS_boundary
-        Ni_tot = Ni_tot_2
-
-        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,7,0.0) !FS Bot Left
+       Ni_tot = Ni_tot_2
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
+      
+        !Ni_tot_1 = Ni_tot+1
+        !Ni_tot_2 = Ni_tot + TD_boundary
+      ! Ni_tot = Ni_tot_2
+        !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,5,0.0) !TD
       
       
         !Ni_tot_1 = Ni_tot+1
@@ -587,7 +635,7 @@ endif
  
             call move_ion_half()       !final ion move to n+1
     
-    if (m .ge. 0.5*Nx*sw_delayTime) then 
+    if (m .ge. 1.0*Nx*sw_delayTime) then 
     	if (testParticlesAssigned .eq. 0) then
     		l=Ni_tot
     		tl = 1
@@ -615,7 +663,7 @@ endif
     endif!End delay for test particles
 
 !update testparticle positions
-if (m .lt. 0.5*Nx*sw_delayTime) then 
+if (m .lt. 1.0*Nx*sw_delayTime) then 
 	do tl= 1,nTestParticles_max
 			testPartPos(tl,1) = 0.0!qx(nx)
 			testPartPos(tl,2) = 0.0!qy(2)
@@ -706,7 +754,7 @@ endif
                         write(130) m
                         write(130) bt
                         write(140) m
-                        write(140) aj!*alpha*np3
+                        write(140) curlBcurrent!aj!*alpha*np3
                         write(150) m
                         write(150) Ec                        
                         write(170) m
@@ -730,8 +778,8 @@ endif
                         !write(305) testPartPos!ionPos(1:5,:)!xp(1:100,:)
                         !write(310) m
                         !write(310) vp
-                        !write(315) m
-                        !write(315) nSC
+                        write(315) m
+                        write(315) gradP
                         !write(317) m
                         !write(317) xSC
                         !write(330) m
@@ -825,7 +873,7 @@ endif
       close(300)
       close(305)
       close(310)
-!      close(315)
+      close(315)
 !      close(317)
       close(320)
 !      close(330)

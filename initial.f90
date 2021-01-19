@@ -100,11 +100,13 @@ module initial
    						b0(i,j,k,2) = b0(i,j,k,2) - b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
    						b0(i,j,k,3) = 0.0
 					endif
-					if (k .ge. nz/2.0) then !BL top
+					if (k .gt. nz/2.0) then !BL top
     						b0(i,j,k,1) = b0(i,j,k,1) - b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
     						b0(i,j,k,2) = b0(i,j,k,2) + b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
     						b0(i,j,k,3) = 0.0
 					endif
+					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
+					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
                               endif
                               if (Bsetup .eq. 6) then !BLMN Coordinates
                               !Constant B everywhere, BM
@@ -221,10 +223,12 @@ module initial
                   dy_grid(j) = dy
             enddo
             
-            do i = 1,nx
+            do i = 1,nx!-1
                   qx(i) = i*dx
                   dx_grid(i) = dx
             enddo
+            !qx(nx) = dx*(nx+50) !10 is 10 additional distance for the ghost cell...
+            !dx_grid(nx) = 10*dx
 
             do k = 1,nz
                 qz(k) = k*delz

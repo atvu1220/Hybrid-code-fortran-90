@@ -3107,13 +3107,15 @@ subroutine get_temperature_cold()
                 do l=Ni_tot,1,-1
                 
                   !x boundaries
-                    if ( (xp(l,1) .lt. qx(1))   .and. (vp(l,1) .lt. 0) )  then
+                    if ( (xp(l,1) .lt. 0) )then!  .and. (vp(l,1) .lt. 0) )  then
                         call remove_ion(l)
                         
                             !removed = removed+1
-                    else if ( (xp(l,1) .gt. qx(nx)) .and. (vp(l,1) .gt. 0) ) then
-                        call remove_ion(l)
+                  !  else if ( ( xp(l,1) .gt. qx(nx-1) ) .and. ( vp(l,1) .gt. 0 ) .and. (mix_ind(l) .eq. 0) ) then
+                  !      call remove_ion(l)
                         
+                    else if ( ( xp(l,1) .gt. qx(nx) )) then! .and. ( vp(l,1) .gt. 0 ) .and. (mix_ind(l) .eq. 1) ) then
+                        call remove_ion(l)     
                             !removed=removed+1
 
                     

@@ -61,10 +61,10 @@ module gutsf
                  do j=1,ny
                         do k= 1,nz
                               do m=1,3
-                                    !bt(i,j,k,m) = b0(i,j,k,m)
-                                    !b12(i,j,k,m) = b0(i,j,k,m)
-                                    !b1(i,j,k,m) = b0(i,j,k,m)
-                                    !b1p2(i,j,k,m) = b0(i,j,k,m)
+                                    bt(i,j,k,m) = b0(i,j,k,m)
+                                    b12(i,j,k,m) = b0(i,j,k,m)
+                                    b1(i,j,k,m) = b0(i,j,k,m)
+                                    b1p2(i,j,k,m) = b0(i,j,k,m)
                               enddo
                        enddo
                   enddo
@@ -172,6 +172,7 @@ module gutsf
             use boundary
             use grid, only: dx_cell,dy_cell,dz_cell
             use inputs, only: dx,dy,alpha
+            use var_arrays, only: curlBcurrent
             implicit none
             real, intent(in):: np(nx,ny,nz)
             real, intent(inout):: b0(nx,ny,nz,3), b1(nx,ny,nz,3)
@@ -215,6 +216,7 @@ module gutsf
                                     
                               do m=1,3
                                     aj(i,j,k,m) = curl_B(m)/(ntot(m)*alpha)
+                                    curlBcurrent(i,j,k,m) = curl_B(m)
                               enddo
                         enddo
                   enddo
@@ -234,6 +236,7 @@ module gutsf
             use boundary
             use grid, only: dx_cell,dy_cell,dz_cell
             use inputs, only: alpha,ddthickness
+            use var_arrays, only: curlBcurrent
             implicit none
             real, intent(in):: np(nx,ny,nz)
             real, intent(inout):: b0(nx,ny,nz,3),b1(nx,ny,nz,3)
@@ -281,7 +284,7 @@ module gutsf
                                     
                               do m = 1,3
                                     aj(i,j,k,m) = curl_B(m)/(ntot(m)*alpha)
-                                    
+                                    curlBcurrent(i,j,k,m) = curl_B(m)
                                     !if ((i.eq.100) .and. (k .eq. 151)) then
                                        !write(*,*) 'bxj bxk', (b1(i,j,k,3) - &
                                     !b1(i,j-1,k,3))/dy_cell(j),(b1(i,j,k-1,2) - b1(i,j,k,2))/dz_cell(k) 

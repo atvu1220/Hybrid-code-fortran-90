@@ -21,6 +21,7 @@ module Var_Arrays
                   Ep(Ni_max,3), &       !Ion particle electric field
                   E(nx,ny,nz,3), &        !E field from electron mom. eq.
                   Ec(nx,ny,nz,3),&
+                  ExB(nx,ny,nz,3),& 	!ExB Drift Velocity from Initial Solar Wind Setup
                   temp_p(nx,ny,nz), &   !temperature
                   mnp(nx,ny,nz), &      !mass density
                   beta, beta_p(Ni_max), &       !variable for particle scaling
@@ -47,7 +48,8 @@ module Var_Arrays
                   np_mixed(nx,ny,nz), & 
                   temp_p_mixed(nx,ny,nz), &
                   up_cold(nx,ny,nz,3), &
-                  up_mixed(nx,ny,nz,3)
+                  up_mixed(nx,ny,nz,3), &
+                  curlBcurrent(nx,ny,nz,3) !mu0*J current.
                   
       
       integer(4):: Ni_tot, Ni_tot_sys, Ni_init,nTestParticles, additional_ions,sumAddedPerRow(nz),avgAddedPerRow(nz)
