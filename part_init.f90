@@ -830,12 +830,18 @@ endif
         
          do 22 while (montecarlo .eq. 0)
         
-         	xp(l,3) = qz((nz-2)/2) - qz(1)*FSBeamWidth +(1.0-pad_ranf())*(qz(1)*FSBeamWidth)
+         	xp(l,3) = qz((nz)/2) - qz(1)*FSBeamWidth +(1.0-pad_ranf())*(qz(1)*FSBeamWidth)
          	call get_pindex(i,j,k,l)
 !        	k=k+int(ddthickness/2)!ddthickness/2
 !         	fitdist = ( b0(i,j,k,1) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) )
 !         	!fitdist = tanh( ( qz((nz-2)/2.0)-xp(l,3))/((1.0/3.0)*ddthickness*delz))
-		fitdist = (FSDriftSpeed*va_f*( b0(i,j,k-int(TDpressureBalance),1) / (  sqrt( b0(i,j,k-int(TDpressureBalance),1)**2+b0(i,j,k-int(TDpressureBalance),2)**2+b0(i,j,k-int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-TDpressureBalance)*(va_f)*b0(i,j,k-int(TDpressureBalance),2) )*b0(i,j,k-int(TDpressureBalance),2) / ( ( b0(i,j,k-int(TDpressureBalance),1)**2+b0(i,j,k-int(TDpressureBalance),2)**2+b0(i,j,k-int(TDpressureBalance),3)**2 ) ) ) /(FSDriftSpeed*va_f)
+		!!*fitdist = (FSDriftSpeed*va_f*( b0(i,j,k-int(TDpressureBalance),1) / (  sqrt( b0(i,j,k-int(TDpressureBalance),1)**2+b0(i,j,k-int(TDpressureBalance),2)**2+b0(i,j,k-int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-TDpressureBalance)*(va_f)*b0(i,j,k-int(TDpressureBalance),2) )*b0(i,j,k-int(TDpressureBalance),2) / ( ( b0(i,j,k-int(TDpressureBalance),1)**2+b0(i,j,k-int(TDpressureBalance),2)**2+b0(i,j,k-int(TDpressureBalance),3)**2 ) ) ) /(FSDriftSpeed*va_f)
+		fitdist = (   FSDriftSpeed*va_f*( b0(i,j,k+int(TDpressureBalance),1) / (  sqrt( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-0*TDpressureBalance)*(va_f)*b0(i,j,k+int(TDpressureBalance),2)*b0(i,j,k+int(TDpressureBalance),2) / ( ( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ) ) /(FSDriftSpeed*va_f))
+		fitdist = (   ( b0(i,j,k+8*int(TDpressureBalance),1) / (  sqrt( b0(i,j,k+8*int(TDpressureBalance),1)**2+b0(i,j,k+8*int(TDpressureBalance),2)**2+b0(i,j,k+8*int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-0*TDpressureBalance)*b0(i,j,k+8*int(TDpressureBalance),2)*b0(i,j,k+8*int(TDpressureBalance),2) / ( ( b0(i,j,k+8*int(TDpressureBalance),1)**2+b0(i,j,k+8*int(TDpressureBalance),2)**2+b0(i,j,k+8*int(TDpressureBalance),3)**2 ) ) ))
+		fitdist= b0(i,j,k+0*int(TDpressureBalance),1)/sqrt( b0(i,j,k+0*int(TDpressureBalance),1)**2+b0(i,j,k+0*int(TDpressureBalance),2)**2+b0(i,j,k+0*int(TDpressureBalance),3)**2 )! - 1.0*b0(i,j,k+int(TDpressureBalance),2) *b0(i,j,k+int(TDpressureBalance),2) / ( ( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ) 
+		!write(*,*) 'k,fitdist', k,fitdist
+		!write(*,*) 'dist1,dist2,ratio', b0(i,j,k+int(TDpressureBalance),1)/ (  sqrt( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ) , (1.0-0*TDpressureBalance)*b0(i,j,k+int(TDpressureBalance),2)*b0(i,j,k+int(TDpressureBalance),2) / ( ( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ), (   ( b0(i,j,k+int(TDpressureBalance),1) / (  sqrt( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-0*TDpressureBalance)*b0(i,j,k+int(TDpressureBalance),2)*b0(i,j,k+int(TDpressureBalance),2) / ( ( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ) ))
+		!*fitdist = (   FSDriftSpeed*va_f*( b0(i,j,k,1) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )  ) - ( (1.0-TDpressureBalance)*(va_f)*b0(i,j,k,2)*b0(i,j,k,2) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) ) /(FSDriftSpeed*va_f))
 		!fitdist = (FSDriftSpeed*va_f*( b0(i,j,k-0,1) / (  sqrt( b0(i,j,k-0,1)**2+b0(i,j,k-0,2)**2+b0(i,j,k-0,3)**2 ) )  ) - ( TDpressureBalance*(va_f)*b0(i,j,k-0,2) )*b0(i,j,k-0,2) / ( ( b0(i,j,k-0,1)**2+b0(i,j,k-0,2)**2+b0(i,j,k-0,3)**2 ) ))/(FSDriftSpeed*va_f) 
 
 		!fitdist = b0(i,j,k,1) /  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 )  + b0(i,j,k,2) / sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 )
@@ -968,13 +974,14 @@ eoverm = q/mO
     	call get_pindex(i,j,k,l)
     	!write(*,*) 'k', i
     	!i=int(nx/2)
-    	EvBx = -( ( up(i,j,k,2)*bt(i,j,k,3) - up(i,j,k,3)*bt(i,j,k,2) )  )
-    	EvBy =  ( ( up(i,j,k,1)*bt(i,j,k,3) - up(i,j,k,3)*bt(i,j,k,1) )  )
-    	EvBz = -( ( up(i,j,k,1)*bt(i,j,k,2) - up(i,j,k,2)*bt(i,j,k,1) )  )
+    	i=i-1
+    	EvBx = -( ( up(i,j,k,2)*b1(i,j,k,3) - up(i,j,k,3)*b1(i,j,k,2) )  )
+    	EvBy =  ( ( up(i,j,k,1)*b1(i,j,k,3) - up(i,j,k,3)*b1(i,j,k,1) )  )
+    	EvBz = -( ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )  )
     	!ExB Drift using the local E/B
-!    	vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx + ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,2) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
-!        vp(l,2) = FSThermalRatio*vy                       - ( -up(i,j,k,1)*b1(i,j,k,2) + up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,1) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
-!        vp(l,3) = FSThermalRatio*vz                       + ( up(i,j,k,3)*( b1(i,j,k,2)*b1(i,j,k,2) + b1(i,j,k,1)*b1(i,j,k,1) ) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+    	vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx + ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,2) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,2) = FSThermalRatio*vy                       - ( -up(i,j,k,1)*b1(i,j,k,2) + up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,1) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,3) = FSThermalRatio*vz                       + ( up(i,j,k,3)*( b1(i,j,k,2)*b1(i,j,k,2) + b1(i,j,k,1)*b1(i,j,k,1) ) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
     	
   
       	!ExB Drift using the initial ExB..constant distribution for injection
@@ -984,19 +991,19 @@ eoverm = q/mO
   	!write(*,*)
       	
       	
-      	
+
       	
       	
       	!Constant solar wind bulk flow for ExB
-    	vp(l,1) = -FSDriftSpeed*va_f*va*( b0(i,j,k,1) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) ) + FSThermalRatio*vx + ( (va_f*va)*b0(i,j,k,2) )*b0(i,j,k,2) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
-        vp(l,2) = -FSDriftSpeed*va_f*va*( b0(i,j,k,2) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) ) + FSThermalRatio*vy - ( (va_f*va)*b0(i,j,k,2) )*b0(i,j,k,1) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
-        vp(l,3) = FSThermalRatio*vz    
+    	!*vp(l,1) = -FSDriftSpeed*va_f*va*( b0(i,j,k,1) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) ) + FSThermalRatio*vx + ( (va_f*va)*b0(i,j,k,2) )*b0(i,j,k,2) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
+        !*vp(l,2) = -FSDriftSpeed*va_f*va*( b0(i,j,k,2) / (  sqrt( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) ) ) + FSThermalRatio*vy - ( (va_f*va)*b0(i,j,k,2) )*b0(i,j,k,1) / ( ( b0(i,j,k,1)**2+b0(i,j,k,2)**2+b0(i,j,k,3)**2 ) )
+        !*vp(l,3) = FSThermalRatio*vz    
         
         
         !Current B for ExB using current ion flow.
-!*        vp(l,1) = -FSDriftSpeed*va_f*va*( bt(i,j,k,1) / (  sqrt( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) ) ) + FSThermalRatio*vx + ( EvBy*bt(i,j,k,3) - EvBz*bt(i,j,k,2) ) / ( ( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) )
-!*        vp(l,2) = -FSDriftSpeed*va_f*va*( bt(i,j,k,2) / (  sqrt( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) ) ) + FSThermalRatio*vy - ( EvBx*bt(i,j,k,3) - EvBz*bt(i,j,k,1) ) / ( ( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) )
-!*        vp(l,3) = -FSDriftSpeed*va_f*va*( bt(i,j,k,3) / (  sqrt( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) ) ) + FSThermalRatio*vz + ( EvBx*bt(i,j,k,2) - EvBy*bt(i,j,k,1) ) / ( ( bt(i,j,k,1)**2+bt(i,j,k,2)**2+bt(i,j,k,3)**2 ) )
+        vp(l,1) = -FSDriftSpeed*va_f*va*( b1(i,j,k,1) / (  sqrt( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) ) ) + FSThermalRatio*vx + ( EvBy*b1(i,j,k,3) - EvBz*b1(i,j,k,2) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,2) = -FSDriftSpeed*va_f*va*( b1(i,j,k,2) / (  sqrt( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) ) ) + FSThermalRatio*vy - ( EvBx*b1(i,j,k,3) - EvBz*b1(i,j,k,1) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+        vp(l,3) = -FSDriftSpeed*va_f*va*( b1(i,j,k,3) / (  sqrt( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) ) ) + FSThermalRatio*vz + ( EvBx*b1(i,j,k,2) - EvBy*b1(i,j,k,1) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
         
         
                          

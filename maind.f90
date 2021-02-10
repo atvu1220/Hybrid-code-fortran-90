@@ -119,7 +119,7 @@ program hybrid
   !TD_initial = int((float(Ni_tot)*(float(ddthickness)/float(nz))))
   !TD_initial = ceiling(float(Ni_tot)/float(nz))
 !*   TD_initial = int((nx-2)*(ny-2)*2*0.3375*ppc/procnum) !for 1dd
-   TD_initial = procnum*floor(float(int((nx-2)*(ny-2)*2*0.5*TDcellBalance*TDpressureBalance*ppc/procnum))/procnum) !for 15dd, 5.06 for 15dd (30depletionwidth), then divide by two because B drops only 25%, 4.24664 for 15dd (15depletionwidith), 0.283 for 1dd, 2.83 for 20dd, 2.53 for 16dd
+   TD_initial = procnum*floor(float(int((nx-2)*(ny-2)*2*1.0*0.5*TDcellBalance*TDpressureBalance*ppc/procnum))/procnum) !for 15dd, 5.06 for 15dd (30depletionwidth), then divide by two because B drops only 25%, 4.24664 for 15dd (15depletionwidith), 0.283 for 1dd, 2.83 for 20dd, 2.53 for 16dd
   !Integral of 1 - 0.5 -0.5*tanh(x/ddthickness). For ddthickness = 12, 4.
   Ni_tot_2 = Ni_tot_1 + TD_initial
   !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD,TD_intial', Ni_tot_1,Ni_tot_2, TD_initial
@@ -315,7 +315,7 @@ program hybrid
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 Ntot_initial = Ni_tot
-Nx_boundary = int((nz-2)*(ny-2)*(1)*ppc/procnum)
+Nx_boundary = floor((nz-2)*(ny-2)*(1)*ppc/procnum)
 !FS_boundary = (float((FSBeamWidth-int(ddthickness/4)))/(nz-2))*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40
 FS_boundary = (float((FSBeamWidth))/(nz-2+1*TDcellBalance*TDpressureBalance))*float(Nx_boundary)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5! 5.0 for 1/20 !2.50 for 1/40, 2.83 for 20dd
   !FS_initial = (float(FSBeamWidth)/nz)*int((nz-2)*(ny-2)*(nx-2)*ppc/procnum)*int(FSDensityRatio/(100.0/ForeshockBeta))!2.5!
@@ -324,15 +324,15 @@ FS_boundary = (float((FSBeamWidth))/(nz-2+1*TDcellBalance*TDpressureBalance))*fl
 !FS_boundary = 2*2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 5%
 !FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary)!2*8*FSDriftSpeed*((FSBeamWidth)/nz)*Nx_boundary!8*FSDriftSpeed!2* for 20% 4* is for 40beta (2.5*4). 2.5%
 !FS_boundary = 2*(float(FSBeamWidth)/nz)*float(Nx_boundary) !2*2.5%
-nTestParticles = FS_boundary
+nTestParticles =  FS_boundary
 va = b0_init/sqrt(mu0*mion*nf_init/1e9)/1e3
 sw_speed = va_f*va!+vth
 sw_delayTime = ((qx(2)-qx(1))/(sw_speed*dt))!/2.0;
 testParticlesAssigned = 0
 FSstartupTime=int(FS_boundary/sw_delayTime)
-        Nx_boundary = ceiling(Nx_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
+        Nx_boundary = floor(Nx_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
         FS_boundary = floor(FSDriftSpeed*FS_boundary/ ((qx(2)-qx(1))/(sw_speed*dt)))
-        TD_boundary = ceiling(TD_initial/float(nx-2)/ ((qx(2)-qx(1))/(sw_speed*dt)))!!int(0.05*float(Nx_boundary)*(float(ddthickness)/(nz)))
+        TD_boundary = floor(TD_initial/float(nx-2)/ ((qx(2)-qx(1))/(sw_speed*dt)))!!int(0.05*float(Nx_boundary)*(float(ddthickness)/(nz)))
         swfsRatio= float(Nx_boundary)/ float(( Nx_boundary + FS_boundary))
 if (my_rank .eq. 0) then
 !write(*,*) 'b1(x,:,:),b0', b1(1,51,2,2),b0(1,51,2,2)
@@ -440,21 +440,21 @@ if (m .gt. 0.5*sw_delayTime ) then
         
         !Everysolar wind delay time, generate TD as a whole
         !!!!!!if (mod(m-10,sw_delayTime) == 0) then
-       ! write(*,*) 'right before TD injection'
-       if ((mod(m,int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)) .eq. 0) .and. TDpressureBalance .eq. 1.0) then
-        
-        Ni_tot_1 = Ni_tot + 1
+        !write(*,*) 'right before TD injection', float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt)),float(TD_initial),float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/float(TD_initial)
+       !if ((mod(m,int(TD_initial/float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt)))) .eq. 0) .and. TDpressureBalance .eq. 1.0) then
+!*        if ((mod(m,int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)) .eq. 0) .and. TDpressureBalance .eq. 1.0) then
+!*        Ni_tot_1 = Ni_tot + 1
   	!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(sw_delayTime)/ddthickness*float(ddthickness)/(nz))
   	!!!Ni_tot_2 = Ni_tot_1 + float(Nx_boundary)*(float(ddthickness)/(nz))*float(sw_delayTime)/procnum
-  	Ni_tot_2 = Ni_tot_1! +TD_initial/ int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial) !TD_boundary
-        Ni_tot = Ni_tot_2
+!*  	Ni_tot_2 = Ni_tot_1! + TD_boundary !! +TD_initial/ int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial) !TD_boundary
+!*        Ni_tot = Ni_tot_2
         !write(*,*) 'TD',Ni_tot_2 - Ni_tot_1, Nx_boundary,(0.1*ddthickness/nz)
         !write(*,*) 'Ni_tot_1,Ni_tot_2 after TD',Ni_tot_1,Ni_tot_2
         !write(*,*) 'Producing 1 particles per timestep',int(float(nx-2)*((qx(2)-qx(1))/(sw_speed*dt))/TD_initial)
-        call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
+!*        call load_foreshock_Maxwellian(vth_bottom,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
         
         !!!!!!!endif
-        endif
+!*        endif
         
         
         
@@ -479,25 +479,27 @@ if (m .gt. 0.5*sw_delayTime ) then
 	
 	
         Ni_tot_1 = Ni_tot+1
-        Ni_tot_2 = Ni_tot + Nx_boundary
+        Ni_tot_2 = Ni_tot + Nx_boundary-1
         Ni_tot = Ni_tot_2
         call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,1,1.0) !SW
         
         !if (m .ge. 1*Nx*sw_delayTime) then 
+    !    Ni_tot_1 = Ni_tot+1
+    !    Ni_tot_2 = Ni_tot + FS_boundary
+    !    Ni_tot = Ni_tot_2
+   !     call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,7,0.0) !FS Bot Left
+        
         Ni_tot_1 = Ni_tot+1
-        Ni_tot_2 = Ni_tot + FS_boundary
+        Ni_tot_2 = Ni_tot + TD_boundary
         Ni_tot = Ni_tot_2
-        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,7,0.0) !FS Bot Left
+        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
         
         Ni_tot_1 = Ni_tot+1
         Ni_tot_2 = Ni_tot + FS_boundary
-       Ni_tot = Ni_tot_2
+        Ni_tot = Ni_tot_2
         call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
       
-        !Ni_tot_1 = Ni_tot+1
-        !Ni_tot_2 = Ni_tot + TD_boundary
-      ! Ni_tot = Ni_tot_2
-        !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,5,0.0) !TD
+
       
       
         !Ni_tot_1 = Ni_tot+1
@@ -506,6 +508,70 @@ if (m .gt. 0.5*sw_delayTime ) then
 !
         !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,6,0.0) !FS Top
         !endif
+        
+        
+        
+        
+        
+        
+        
+        
+        
+endif
+
+
+
+    if (m .ge. 1.1*Nx*sw_delayTime) then 
+    	if (testParticlesAssigned .eq. 0) then
+    		l=Ni_tot
+    		tl = 1
+		do while (tl .le. nTestParticles_max) !tl= 1,nTestParticles
+			
+			do while (mix_ind(l) .eq. 0)
+				l=l-1
+			end do
+			testPartIndex(tl) = l
+			
+			
+			if (my_rank .eq. 0) then
+    				write(*,*) 'tl', tl,tl,mix_ind(l),l
+			endif
+			l=l-1
+			tl = tl+1
+		enddo
+		do tl= 1,nTestParticles_max
+			testPartPos(tl,1) = xp(testPartIndex(tl),1)
+			testPartPos(tl,2) = xp(testPartIndex(tl),2)
+			testPartPos(tl,3) = xp(testPartIndex(tl),3)
+		enddo
+		testParticlesAssigned=1
+    	endif!testparticle assignment
+    endif!End delay for test particles
+
+!update testparticle positions
+if (m .lt. 1.1*Nx*sw_delayTime) then 
+	do tl= 1,nTestParticles_max
+			testPartPos(tl,1) = 0.0!qx(nx)
+			testPartPos(tl,2) = 0.0!qy(2)
+			testPartPos(tl,3) = 0.0!qz(nz/2.0-ddthickness)
+			
+			!if (my_rank .eq. 0) then
+    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
+			!endif
+	enddo
+else
+	do tl= 1,nTestParticles_max
+		if (testPartIndex(tl) .eq. 0) then
+
+		else
+			testPartPos(tl,1) = xp(testPartIndex(tl),1)
+			testPartPos(tl,2) = xp(testPartIndex(tl),2)
+			testPartPos(tl,3) = xp(testPartIndex(tl),3)
+		endif
+			!if (my_rank .eq. 0) then
+    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
+			!endif
+	enddo
 endif
 
        !if (my_rank .eq. 0) then
@@ -635,58 +701,7 @@ endif
  
             call move_ion_half()       !final ion move to n+1
     
-    if (m .ge. 1.0*Nx*sw_delayTime) then 
-    	if (testParticlesAssigned .eq. 0) then
-    		l=Ni_tot
-    		tl = 1
-		do while (tl .le. nTestParticles_max) !tl= 1,nTestParticles
-			
-			do while (mix_ind(l) .eq. 0)
-				l=l-1
-			end do
-			testPartIndex(tl) = l
-			
-			
-			if (my_rank .eq. 0) then
-    				write(*,*) 'tl', tl,tl,mix_ind(l),l
-			endif
-			l=l-1
-			tl = tl+1
-		enddo
-		do tl= 1,nTestParticles_max
-			testPartPos(tl,1) = xp(testPartIndex(tl),1)
-			testPartPos(tl,2) = xp(testPartIndex(tl),2)
-			testPartPos(tl,3) = xp(testPartIndex(tl),3)
-		enddo
-		testParticlesAssigned=1
-    	endif!testparticle assignment
-    endif!End delay for test particles
 
-!update testparticle positions
-if (m .lt. 1.0*Nx*sw_delayTime) then 
-	do tl= 1,nTestParticles_max
-			testPartPos(tl,1) = 0.0!qx(nx)
-			testPartPos(tl,2) = 0.0!qy(2)
-			testPartPos(tl,3) = 0.0!qz(nz/2.0-ddthickness)
-			
-			!if (my_rank .eq. 0) then
-    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
-			!endif
-	enddo
-else
-	do tl= 1,nTestParticles_max
-		if (testPartIndex(tl) .eq. 0) then
-
-		else
-			testPartPos(tl,1) = xp(testPartIndex(tl),1)
-			testPartPos(tl,2) = xp(testPartIndex(tl),2)
-			testPartPos(tl,3) = xp(testPartIndex(tl),3)
-		endif
-			!if (my_rank .eq. 0) then
-    			!	write(*,*) 'tl,x,y,z', tl,testPartPos(tl,1),testPartPos(tl,2),testPartPos(tl,3)
-			!endif
-	enddo
-endif
 
 
 
@@ -798,7 +813,7 @@ endif
                    ndiag = 0
               endif
                    
-              if (ndiag_part .eq. nout*20) then
+              if (ndiag_part .eq. nout*10) then
                    if (my_rank .ge. 0) then
                         write(120) m
                         write(120) mix_ind

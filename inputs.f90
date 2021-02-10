@@ -43,7 +43,7 @@ module inputs
                         epsilon = 8.85e-12, &
                         rtod=180.0/pi, &
                         km_to_m = 1.0e3, &
-                        kboltz = 1.38e-29, &
+                        kboltz = 1.38e-29, & !This is in units of km already...1.38e-23 * 10^-9 km^-3 * 1000
                         tempf0 = 50*11600.0
                         
       real:: np_top, np_bottom, b0_top, b0_bottom, Lo, vth_top, vth_bottom, vth_max, &
@@ -138,10 +138,7 @@ module inputs
                   implicit none
                   
                   
-                  ForeshockBeta = 200!20.0!0.5; !Weighting of Foreshock Ions. 0.5% = 1/200, 1 Foreshock Ion to 1/200 of Solar Wind Ions, FSBeta =20  means that one foreshock particle is 5%
-                  TDcellBalance = -0.5*ddthickness*(-1.0 + log(cosh(1.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance
-                  write(*,*) 'TDcellBalance...',TDcellBalance
-                  write(*,*) 'Foreshock Beta...',ForeshockBeta
+                  
 		  mion = amu*ion_amu!3.841e-26
                   write(*,*) 'mion...',mion
 
@@ -154,9 +151,9 @@ module inputs
                   lambda_i = (3e8/sqrt((nf_init/1e9)*q*q/(8.85e-12*mion)))/1e3
                   write(*,*) 'lambda_i',lambda_i    
                   dx= lambda_i*dx_frac
-                  dy= 2*lambda_i*dx_frac           !units in km
+                  dy= 4*lambda_i*dx_frac           !units in km
                   delz = lambda_i*dx_frac       !dz at release coordinates
-                  ddthickness = ddthickness*dx_frac
+                  ddthickness = int(float(ddthickness)/dx_frac) !Ddthickness in the number of cells...ion inertial lengths.
                   dt= dt_frac*mion/(q*b0_init)  !main time step
                   dtsub_init = dt/ntsub         !subcycle time step
                   vtop = vsw
@@ -164,6 +161,13 @@ module inputs
                   
                   Ni_tot_0 = int(Ni_max*Ni_tot_frac)
                   write(*,*) 'Ni_tot_0...',Ni_tot_0, Ni_max, Ni_tot_frac
+                  
+                  ForeshockBeta = 100!20.0!0.5; !Weighting of Foreshock Ions. 0.5% = 1/200, 1 Foreshock Ion to 1/200 of Solar Wind Ions, FSBeta =20  means that one foreshock particle is 5%
+                  TDcellBalance = -0.25*float(ddthickness)*(-1.0 + log(cosh(1.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-a
+                  !TDcellBalance = 2*ddthickness!float(ddthickness)*(1.0 - 0.5*log(cosh(2.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-2a
+                  !TDcellBalance = float(ddthickness)*(1.0 - 0.5*log(cosh(2.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-2a
+                  write(*,*) 'TDcellBalance...',TDcellBalance
+                  write(*,*) 'Foreshock Beta...',ForeshockBeta
                   
                   mO = mion     !mass of H (kg)
                   
