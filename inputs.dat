@@ -19,10 +19,10 @@
 10.0                   				!mass load rate (kg/s)
 15.0                				!electron temperature (eV)  
 4                     				!Boundary condition (1: fully periodic   2: Periodic on xy, zero derivative on z 4:periodic on y)
-16       					!Discontinuity half-thickness, in ion gyroradius
+2       					!Discontinuity half-thickness, in ion gyroradius
 120        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
 12.0						!Ratio of densities between foreshock ions over solar wind ions
-4.0    						!Foreshock Thermal Multiplier
+8.0    						!Foreshock Thermal Multiplier
 2.0       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
 1.0						!1.0 for TD pressure balance with ion density, 0.0 for no TD
-'/import/c1/DAYSIDE/atvu/Run181/'            	!output directory
+'/import/c1/DAYSIDE/atvu/Run182/'            	!output directory
