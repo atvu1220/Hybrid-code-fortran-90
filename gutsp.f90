@@ -2013,7 +2013,7 @@ module gutsp
             use boundary
             use inputs, only: mion
             use grid, only: qx,qy,qz
-            use var_arrays, only: vp,np,temp_p,Ni_tot,ijkp,beta,beta_p,mrat,wght
+            use var_arrays, only: vp,np,temp_p,Ni_tot,ijkp,beta,beta_p,mrat,wght,tp
             implicit none
             real:: recvbuf(nx*ny*nz*3),up2(nx,ny,nz,3),up_ave(nx,ny,nz,3),ct(nx,ny,nz,3),volb,nvolb,mvp(Ni_max,3)
             integer:: i,j,k,l,m,ip,jp,kp,count,ierr
@@ -2230,11 +2230,16 @@ module gutsp
                                     up2(i,j,k,1) - up_ave(i,j,k,1)**2 + &
                                     up2(i,j,k,2) - up_ave(i,j,k,2)**2 + & 
                                     up2(i,j,k,3) - up_ave(i,j,k,3)**2)
+                                    
+                              tp(i,j,k,1) = (1./3.)*1e6*mion*(up2(i,j,k,1) - up_ave(i,j,k,1)**2)
+                              tp(i,j,k,2) = (1./3.)*1e6*mion*(up2(i,j,k,2) - up_ave(i,j,k,2)**2)
+                              tp(i,j,k,3) = (1./3.)*1e6*mion*(up2(i,j,k,3) - up_ave(i,j,k,3)**2)
                         enddo
                   enddo
             enddo
 
             call boundary_scalar(temp_p)
+            call boundary_vector(tp)
             
       end subroutine get_temperature
       
@@ -2313,7 +2318,7 @@ subroutine get_temperature_mixed()
             use boundary
             use inputs, only: mion
             use grid, only: qx,qy,qz
-            use var_arrays, only: vp,np_mixed,temp_p_mixed,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind
+            use var_arrays, only: vp,np_mixed,temp_p_mixed,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind,tp_mixed
             implicit none
             real:: recvbuf(nx*ny*nz*3),up2(nx,ny,nz,3),up_ave(nx,ny,nz,3),ct(nx,ny,nz,3),volb,nvolb,mvp(Ni_tot,3)
             integer:: i,j,k,l,m,ip,jp,kp,count,ierr
@@ -2546,11 +2551,15 @@ subroutine get_temperature_mixed()
                                     up2(i,j,k,1) - up_ave(i,j,k,1)**2 + &
                                     up2(i,j,k,2) - up_ave(i,j,k,2)**2 + & 
                                     up2(i,j,k,3) - up_ave(i,j,k,3)**2)
+                              tp_mixed(i,j,k,1) = (1./3.)*1e6*mion*(up2(i,j,k,1) - up_ave(i,j,k,1)**2)
+                              tp_mixed(i,j,k,2) = (1./3.)*1e6*mion*(up2(i,j,k,2) - up_ave(i,j,k,2)**2)
+                              tp_mixed(i,j,k,3) = (1./3.)*1e6*mion*(up2(i,j,k,3) - up_ave(i,j,k,3)**2)
                         enddo
                   enddo
             enddo
 
             call boundary_scalar(temp_p_mixed)
+            call boundary_vector(tp_mixed)
             
       end subroutine get_temperature_mixed
       
@@ -2635,7 +2644,7 @@ subroutine get_temperature_cold()
             use boundary
             use inputs, only: mion
             use grid, only: qx,qy,qz
-            use var_arrays, only: vp,np_cold,temp_p_cold,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind
+            use var_arrays, only: vp,np_cold,temp_p_cold,Ni_tot,ijkp,beta,beta_p,mrat,wght,mix_ind,tp_cold
             implicit none
             real:: recvbuf(nx*ny*nz*3),up2(nx,ny,nz,3),up_ave(nx,ny,nz,3),ct(nx,ny,nz,3),volb,nvolb,mvp(Ni_tot,3)
             integer:: i,j,k,l,m,ip,jp,kp,count,ierr
@@ -2866,11 +2875,17 @@ subroutine get_temperature_cold()
                                     up2(i,j,k,1) - up_ave(i,j,k,1)**2 + &
                                     up2(i,j,k,2) - up_ave(i,j,k,2)**2 + & 
                                     up2(i,j,k,3) - up_ave(i,j,k,3)**2)
+                                    
+                              tp_cold(i,j,k,1) = (1./3.)*1e6*mion*(up2(i,j,k,1) - up_ave(i,j,k,1)**2)
+                              tp_cold(i,j,k,2) = (1./3.)*1e6*mion*(up2(i,j,k,2) - up_ave(i,j,k,2)**2)
+                              tp_cold(i,j,k,3) = (1./3.)*1e6*mion*(up2(i,j,k,3) - up_ave(i,j,k,3)**2)
                         enddo
                   enddo
             enddo
 
+	    
             call boundary_scalar(temp_p_cold)
+            call boundary_vector(tp_cold)
             
       end subroutine get_temperature_cold
       

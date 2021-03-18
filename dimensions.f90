@@ -4,7 +4,7 @@ module dimensions
 
       integer, parameter:: nx = 202, ny = 3, nz = 400 !1001,1001
 	
-      integer*4, parameter:: Ni_max =1600000!500000  
+      integer*4, parameter:: Ni_max =2000000!500000  
      
       integer, parameter:: nTestParticles_max = 1000 !Number of FS Test Particles
       

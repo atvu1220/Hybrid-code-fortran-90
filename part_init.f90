@@ -979,9 +979,9 @@ eoverm = q/mO
     	EvBy =  ( ( up(i,j,k,1)*b1(i,j,k,3) - up(i,j,k,3)*b1(i,j,k,1) )  )
     	EvBz = -( ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )  )
     	!ExB Drift using the local E/B
-    	vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx + ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,2) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
-        vp(l,2) = FSThermalRatio*vy                       - ( -up(i,j,k,1)*b1(i,j,k,2) + up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,1) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
-        vp(l,3) = FSThermalRatio*vz                       + ( up(i,j,k,3)*( b1(i,j,k,2)*b1(i,j,k,2) + b1(i,j,k,1)*b1(i,j,k,1) ) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+  !  	vp(l,1) = -FSDriftSpeed*va_f*va+FSThermalRatio*vx + ( up(i,j,k,1)*b1(i,j,k,2) - up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,2) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+   !     vp(l,2) = FSThermalRatio*vy                       - ( -up(i,j,k,1)*b1(i,j,k,2) + up(i,j,k,2)*b1(i,j,k,1) )*b1(i,j,k,1) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
+  !      vp(l,3) = FSThermalRatio*vz                       + ( up(i,j,k,3)*( b1(i,j,k,2)*b1(i,j,k,2) + b1(i,j,k,1)*b1(i,j,k,1) ) ) / ( ( b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2 ) )
     	
   
       	!ExB Drift using the initial ExB..constant distribution for injection

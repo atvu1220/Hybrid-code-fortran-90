@@ -258,6 +258,9 @@ program hybrid
             open(190,file=trim(out_dir)//'c.momentum_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(192,file=trim(out_dir)//'c.p_conserve_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(300,file=trim(out_dir)//'c.temp_p_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(301,file=trim(out_dir)//'c.tp_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(302,file=trim(out_dir)//'c.tp_cold_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(303,file=trim(out_dir)//'c.tp_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(315,file=trim(out_dir)//'c.gradP_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
@@ -290,6 +293,9 @@ program hybrid
             open(190,file=trim(out_dir)//'c.momentum.dat',status='unknown',form='unformatted')
             open(192,file=trim(out_dir)//'c.p_conserve.dat',status='unknown',form='unformatted')
             open(300,file=trim(out_dir)//'c.temp_p.dat',status='unknown',form='unformatted')
+            open(301,file=trim(out_dir)//'c.tp.dat',status='unknown',form='unformatted')
+            open(302,file=trim(out_dir)//'c.tp_cold.dat',status='unknown',form='unformatted')
+            open(303,file=trim(out_dir)//'c.tp_mixed.dat',status='unknown',form='unformatted')
             open(305,file=trim(out_dir)//'c.xp_0.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0.dat',status='unknown',form='unformatted')
             !open(315,file=trim(out_dir)//'c.gradP_0.dat',status='unknown',form='unformatted')
@@ -788,6 +794,12 @@ endif
                         write(182) up_mixed
                         write(300) m
                         write(300) temp_p/1.6e-19  !output in eV
+                        write(301) m
+                        write(301) tp/1.6e-19
+                        write(302) m
+                        write(302) tp_cold/1.6e-19
+                        write(303) m
+                        write(303) tp_mixed/1.6e-19
                         !write(305) m
                         !write(305) xp
                         !write(305) testPartPos!ionPos(1:5,:)!xp(1:100,:)
@@ -886,6 +898,9 @@ endif
       close(220)
       close(221)
       close(300)
+      close(301)
+      close(302)
+      close(303)
       close(305)
       close(310)
       close(315)
