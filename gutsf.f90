@@ -370,7 +370,7 @@ module gutsf
             use dimensions
             use boundary
             use grid_interp
-            use var_arrays, only: grav, gradP
+            use var_arrays, only: grav, gradP, ue
             use inputs, only: mion
             implicit none
             real, intent(in):: up(nx,ny,nz,3), nu(nx,ny,nz)
@@ -386,6 +386,7 @@ module gutsf
                         do k=2,nz-1
                               do m = 1,3
                                     a(i,j,k,m) = aa(i,j,k,m) - up(i,j,k,m)
+                                    ue(i,j,k,m) = a(i,j,k,m)
                               enddo
                         enddo
                   enddo

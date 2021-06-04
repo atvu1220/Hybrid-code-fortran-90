@@ -52,8 +52,8 @@ module Var_Arrays
                   tp_cold(nx,ny,nz,3), &
                   tp_mixed(nx,ny,nz,3), &
                   tp(nx,ny,nz,3),&
-                  curlBcurrent(nx,ny,nz,3) !mu0*J current.
-                  
+                  curlBcurrent(nx,ny,nz,3), & !mu0*J current.
+                  ue(nx,ny,nz,3)
       
       integer(4):: Ni_tot, Ni_tot_sys, Ni_init,nTestParticles, additional_ions,sumAddedPerRow(nz),avgAddedPerRow(nz)
       integer::    vdist_init(-80:80,-80:80), vdist_add(-80:80,-80:80), vpp_init(-80:80,-80:80), vpp_add(-80:80,-80:80)

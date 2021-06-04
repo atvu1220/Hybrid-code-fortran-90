@@ -20,7 +20,7 @@ module inputs
 
 !       time stepping paramters
 
-      integer, parameter:: ntsub = 20    !number of subcycle timesteps
+      integer, parameter:: ntsub = 10    !number of subcycle timesteps
       
 !       Output directory
 
@@ -55,7 +55,7 @@ module inputs
       real:: omega_p                            !ion gyrofrequency
       
 !       Electron ion collision frequency
-      real, parameter:: lww2 = 0.999!9!1.0!0.9990!0.9995!0.9995!0.9994!0.995          !artificial diffusion for the magnetic field update
+      real, parameter:: lww2 = 0.995!0.999!0.999!9!1.0!0.9990!0.9995!0.9995!0.9994!0.995          !artificial diffusion for the magnetic field update
       real, parameter:: lww1 = (1-lww2)/6.0     !divide by six for nearest neighbor
       
 !       Density scaling paramter, alpha, and ion particle array dims
@@ -151,7 +151,7 @@ module inputs
                   lambda_i = (3e8/sqrt((nf_init/1e9)*q*q/(8.85e-12*mion)))/1e3
                   write(*,*) 'lambda_i',lambda_i    
                   dx= lambda_i*dx_frac
-                  dy= 4*lambda_i*dx_frac           !units in km
+                  dy= 1*lambda_i*dx_frac           !units in km
                   delz = lambda_i*dx_frac       !dz at release coordinates
                   ddthickness = int(float(ddthickness)/dx_frac) !Ddthickness in the number of cells...ion inertial lengths.
                   dt= dt_frac*mion/(q*b0_init)  !main time step
@@ -162,7 +162,7 @@ module inputs
                   Ni_tot_0 = int(Ni_max*Ni_tot_frac)
                   write(*,*) 'Ni_tot_0...',Ni_tot_0, Ni_max, Ni_tot_frac
                   
-                  ForeshockBeta = 100!20.0!0.5; !Weighting of Foreshock Ions. 0.5% = 1/200, 1 Foreshock Ion to 1/200 of Solar Wind Ions, FSBeta =20  means that one foreshock particle is 5%
+                  ForeshockBeta = 50!20.0!0.5; !Weighting of Foreshock Ions. 0.5% = 1/200, 1 Foreshock Ion to 1/200 of Solar Wind Ions, FSBeta =20  means that one foreshock particle is 5%
                   TDcellBalance = -0.25*float(ddthickness)*(-1.0 + log(cosh(1.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-a
                   !TDcellBalance = 2*ddthickness!float(ddthickness)*(1.0 - 0.5*log(cosh(2.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-2a
                   !TDcellBalance = float(ddthickness)*(1.0 - 0.5*log(cosh(2.0))) !Calculates how many additional cells of particles to fill in TD for pressure balance 0-2a

@@ -90,7 +90,7 @@ module initial
     						b0(i,j,k,3) = 0.0!b0_init*eoverm
 					endif
                               	endif
-                              if (Bsetup .eq. 5) then !BLMN Coordinates
+                              if (Bsetup .eq. 5) then !BLMN Coordinates, +y
                               !Constant B everywhere, BM
                               b0(i,j,k,1) = b0_init*eoverm*0.25
                               b0(i,j,k,2) = b0_init*eoverm*0.25
@@ -108,7 +108,7 @@ module initial
 					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
 					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
                               endif
-                              if (Bsetup .eq. 6) then !BLMN Coordinates
+                              if (Bsetup .eq. 6) then !BLMN Coordinates, but -y 
                               !Constant B everywhere, BM
                               b0(i,j,k,1) = b0_init*eoverm*0.25
                               b0(i,j,k,2) = -b0_init*eoverm*0.25

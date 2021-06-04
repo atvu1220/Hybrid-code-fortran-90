@@ -248,7 +248,7 @@ program hybrid
             open(176,file=trim(out_dir)//'c.np_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(177,file=trim(out_dir)//'c.temp_p_mixed_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
 	    open(315,file=trim(out_dir)//'c.gradP_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            
+            open(317,file=trim(out_dir)//'c.ue_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             
             !diagnostics chex,bill,satnp
             
@@ -264,7 +264,7 @@ program hybrid
             open(305,file=trim(out_dir)//'c.xp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(315,file=trim(out_dir)//'c.gradP_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            !open(317,file=trim(out_dir)//'c.xSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            open(317,file=trim(out_dir)//'c.ue_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_0)'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             open(340,file=trim(out_dir)//'c.xp_mixed_0_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
@@ -285,6 +285,7 @@ program hybrid
             open(176,file=trim(out_dir)//'c.np_mixed.dat',status='unknown',form='unformatted')
             open(177,file=trim(out_dir)//'c.temp_p_mixed.dat',status='unknown',form='unformatted')
             open(315,file=trim(out_dir)//'c.gradP.dat',status='unknown',form='unformatted')
+            open(317,file=trim(out_dir)//'c.ue.dat',status='unknown',form='unformatted')
             !diagnostics chex,bill,satnp
             
             open(180,file=trim(out_dir)//'c.up.dat',status='unknown',form='unformatted')
@@ -299,7 +300,7 @@ program hybrid
             open(305,file=trim(out_dir)//'c.xp_0.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_0.dat',status='unknown',form='unformatted')
             !open(315,file=trim(out_dir)//'c.gradP_0.dat',status='unknown',form='unformatted')
-            !open(317,file=trim(out_dir)//'c.xSC_0.dat',status='unknown',form='unformatted')
+            !open(317,file=trim(out_dir)//'c.ue_0.dat',status='unknown',form='unformatted')
             open(320,file=trim(out_dir)//'c.np_wake.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_0.dat',status='unknown',form='unformatted')
             open(340,file=trim(out_dir)//'c.xp_mixed_0_.dat',status='unknown',form='unformatted')
@@ -314,7 +315,7 @@ program hybrid
             open(305,file=trim(out_dir)//'c.xp_'//trim(filenum)//'.dat',status='unknown',form='unformatted')
             open(310,file=trim(out_dir)//'c.vp_'//trim(filenum)//'.dat',status='unknown',form='unformatted')
             !open(315,file=trim(out_dir)//'c.gradP_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
-            !open(317,file=trim(out_dir)//'c.xSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
+            !open(317,file=trim(out_dir)//'c.ue_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
             !open(330,file=trim(out_dir)//'c.vSC_'//trim(filenum)//'_'//trim(mstart)//'.dat',status='unknown',form='unformatted')
        endif
        
@@ -807,8 +808,8 @@ endif
                         !write(310) vp
                         write(315) m
                         write(315) gradP
-                        !write(317) m
-                        !write(317) xSC
+                        write(317) m
+                        write(317) ue
                         !write(330) m
                         !write(330) vSC
                         write(340) m
@@ -825,7 +826,7 @@ endif
                    ndiag = 0
               endif
                    
-              if (ndiag_part .eq. nout*10) then
+              if (ndiag_part .eq. nout*2) then
                    if (my_rank .ge. 0) then
                         write(120) m
                         write(120) mix_ind
@@ -904,7 +905,7 @@ endif
       close(305)
       close(310)
       close(315)
-!      close(317)
+      close(317)
       close(320)
 !      close(330)
 !      close(340)
