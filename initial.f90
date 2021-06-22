@@ -6,7 +6,7 @@ module initial
       
       
       subroutine grd6_setup(b0,bt,b12,b1,b1p2,nu,input_Eb)
-            use inputs, only: q, mO, PI, b0_top, b0_bottom, b0_init, nu_init, km_to_m, mu0,dx,dy,delz, ddthickness, pi, dx_frac
+            use inputs, only: q, mO, PI, b0_top, b0_bottom, b0_init, nu_init, km_to_m, mu0,dx,dy,delz, ddthickness, pi, dx_frac, magneticShear
             use grid, only: dx_cell, dy_cell, dz_cell,qx,qy,qz
             implicit none
             real, intent(out):: b0(nx,ny,nz,3), &
@@ -22,7 +22,7 @@ module initial
             integer:: i,j,k,m,Bsetup
             
             
-            Bsetup= 5
+            Bsetup= 8
             dtheta = 2*pi / 4 /(2*ddthickness)
             
             eoverm = q/mO
@@ -140,7 +140,24 @@ module initial
     						b0(i,j,k,3) = 0.0
 					endif
                               endif
-                              
+                               if (Bsetup .eq. 8) then !BLMN Coordinates, with variable magneticShear frin input.dat
+                              !Constant B everywhere, BM
+                              b0(i,j,k,1) = b0_init*eoverm*0.5*cos(magneticShear/180*pi/2)
+                              b0(i,j,k,2) = b0_init*eoverm*0.5*sin(magneticShear/180*pi/2)
+                              b0(i,j,k,3) = 0.0
+                              		if (k .le. nz/2.0) then !BL bottom
+   						b0(i,j,k,1) = b0(i,j,k,1) + (cos(0.0) - cos(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = b0(i,j,k,2) - (         sin(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,3) = 0.0
+					endif
+					if (k .gt. nz/2.0) then !BL top
+    						b0(i,j,k,1) = b0(i,j,k,1) - (cos(magneticShear/180.0*pi/2) - cos(magneticShear/180.0*pi)   ) * b0_init*eoverm*0.5*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,2) = b0(i,j,k,2) + (sin(magneticShear/180.0*pi)   - sin(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = 0.0
+					endif
+					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
+					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
+                              endif
                               
                         enddo
                   enddo

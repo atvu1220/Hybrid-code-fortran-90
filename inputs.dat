@@ -4,7 +4,7 @@
 5e15                 				!minimum density (km^-3) (40)
 100.0                  				!maximum density (scaled by minimum density) (50)
 0.02                				!particle time step (fraction of omega_i) (0.08 is the default), 0.0041666
-3000                				!number of time steps (10000)
+1200                				!number of time steps (10000)
 25                   				!diagnostic output interval (100)
 10.0                   				!flow speed (km/s)
 1.0                  				!Plasma beta-------------thermal speed for Maxwellian (40 km/s)
@@ -20,9 +20,11 @@
 0.0                				!electron temperature (eV)  
 4                     				!Boundary condition (1: fully periodic   2: Periodic on xy, zero derivative on z 4:periodic on y)
 2       					!Discontinuity half-thickness, in ion gyroradius
-200        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
+150        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
 12.0						!Ratio of densities between foreshock ions over solar wind ions
 8.0    						!Foreshock Thermal Multiplier
 2.0       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
 1.0						!1.0 for TD pressure balance with ion density, 0.0 for no TD
-'/import/c1/DAYSIDE/atvu/Run202/'            	!output directory
+45.0						!Magnetic Shear across Harris Current Sheet
+2						!Number of Quasi-parallel sides.
+'/import/c1/DAYSIDE/atvu/Run214/'            	!output directory

@@ -505,15 +505,22 @@ if (m .gt. 0.5*sw_delayTime ) then
         Ni_tot_2 = Ni_tot + FS_boundary
         Ni_tot = Ni_tot_2
         call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
+        
+        
+        if (quasiparallel .eq. 2) then
+        	!write(*,*) 'start parallel injection'
+        	Ni_tot_1 = Ni_tot+1
+        	Ni_tot_2 = Ni_tot + int(cos(magneticShear/180*pi)*float(FS_boundary))
+        	!write(*,*) 'FS Top...', int(cos(magneticShear/180*pi)*float(FS_boundary))
+        	Ni_tot = Ni_tot_2
+!
+        	call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,6,0.0) !FS Top
+        endif
       
 
       
       
-        !Ni_tot_1 = Ni_tot+1
-        !Ni_tot_2 = Ni_tot + FS_boundary
-        !Ni_tot = Ni_tot_2
-!
-        !call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,6,0.0) !FS Top
+
         !endif
         
         
@@ -528,7 +535,7 @@ endif
 
 
 
-    if (m .ge. 1.1*Nx*sw_delayTime) then 
+    if (m .ge. 0.5*Nx*sw_delayTime) then 
     	if (testParticlesAssigned .eq. 0) then
     		l=Ni_tot
     		tl = 1
@@ -556,7 +563,7 @@ endif
     endif!End delay for test particles
 
 !update testparticle positions
-if (m .lt. 1.1*Nx*sw_delayTime) then 
+if (m .lt. 0.5*Nx*sw_delayTime) then 
 	do tl= 1,nTestParticles_max
 			testPartPos(tl,1) = 0.0!qx(nx)
 			testPartPos(tl,2) = 0.0!qy(2)
@@ -826,7 +833,7 @@ endif
                    ndiag = 0
               endif
                    
-              if (ndiag_part .eq. nout*2) then
+              if (ndiag_part .eq. nout*10) then
                    if (my_rank .ge. 0) then
                         write(120) m
                         write(120) mix_ind

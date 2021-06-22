@@ -935,7 +935,24 @@ endif
         !write(*,*) 'z...........',xp(l,3)/101
         
     else if (population .eq. 6) then !Top FS
-            xp(l,3) = (qz(nz/2)-qz(1)) + (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+            
+            
+            montecarlo = 0
+        
+         do 23 while (montecarlo .eq. 0)
+        	xp(l,3) = (qz(nz/2)-qz(1)) + (1.0-pad_ranf())*(float(FSBeamWidth)*(qz(2)-qz(1)))
+         	!xp(l,3) = qz((nz)/2) - qz(1)*FSBeamWidth +(1.0-pad_ranf())*(qz(1)*FSBeamWidth)
+         	call get_pindex(i,j,k,l)
+
+		!fitdist = (   FSDriftSpeed*va_f*( b0(i,j,k+int(TDpressureBalance),1) / (  sqrt( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-0*TDpressureBalance)*(va_f)*b0(i,j,k+int(TDpressureBalance),2)*b0(i,j,k+int(TDpressureBalance),2) / ( ( b0(i,j,k+int(TDpressureBalance),1)**2+b0(i,j,k+int(TDpressureBalance),2)**2+b0(i,j,k+int(TDpressureBalance),3)**2 ) ) ) /(FSDriftSpeed*va_f))
+		!fitdist = (   ( b0(i,j,k+8*int(TDpressureBalance),1) / (  sqrt( b0(i,j,k+8*int(TDpressureBalance),1)**2+b0(i,j,k+8*int(TDpressureBalance),2)**2+b0(i,j,k+8*int(TDpressureBalance),3)**2 ) )  ) - ( (1.0-0*TDpressureBalance)*b0(i,j,k+8*int(TDpressureBalance),2)*b0(i,j,k+8*int(TDpressureBalance),2) / ( ( b0(i,j,k+8*int(TDpressureBalance),1)**2+b0(i,j,k+8*int(TDpressureBalance),2)**2+b0(i,j,k+8*int(TDpressureBalance),3)**2 ) ) ))
+		fitdist= b0(i,j,k+0*int(TDpressureBalance),2)/sqrt( b0(i,j,k+0*int(TDpressureBalance),1)**2+b0(i,j,k+0*int(TDpressureBalance),2)**2+b0(i,j,k+0*int(TDpressureBalance),3)**2 )!
+         	if (pad_ranf() .le. fitdist) montecarlo = 1        
+         23 continue
+            
+            
+            
+            
             
     else !All z
         xp(l,3) = qz(1)+(1.0-pad_ranf())*(qz(nz-1)-qz(1))
@@ -958,7 +975,7 @@ endif
     vy = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
     vz = vth2*sqrt(-log(pad_ranf()))*cos(PI*pad_ranf())
  
-eoverm = q/mO
+	eoverm = q/mO
     if ((population .eq. 1) .or. (population .eq. 5) .or. (population .eq. 0) .or. (population .eq. 4)) then !Solar Wind, Left Edge
     
         vp(l,1) = va_f*va+vx
@@ -966,7 +983,7 @@ eoverm = q/mO
         vp(l,3) = vz
         beta_p(l) = beta_particle
 
-    else if ((population .eq. 2) .or. (population .eq. 3) .or. (population .eq. 7)) then !Foreshock Ions, Right Edge
+    else if ((population .eq. 2) .or. (population .eq. 3) .or. (population .eq. 7) .or. (population .eq. 6)) then !Foreshock Ions, Right Edge
 !	vp(l,1) = -FSDriftSpeed*va_f*va + FSThermalRatio*vx 
       !  vp(l,2) = FSThermalRatio*vy                       
        ! vp(l,3) = FSThermalRatio*vz                      
@@ -1040,13 +1057,13 @@ eoverm = q/mO
     !    vp(l,3) = FSThermalRatio*vz !1.0*va_f*va+va_f*vz
     !    beta_p(l) = 40*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
         
-    else if (population .eq. 6) then !Foreshock Ions, Top half above TD
+    !else if (population .eq. 16) then !Foreshock Ions, Top half above TD
     
 
-        vp(l,1) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vx + (E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2))/(  (b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2)  )
-        vp(l,2) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vy - (E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))
-        vp(l,3) = FSThermalRatio*vz + (E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))!1.0*va_f*va+va_f*vz
-        beta_p(l) = (ForeshockBeta)*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
+        !vp(l,1) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vx + (E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2))/(  (b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2)  )
+        !vp(l,2) = -FSDriftSpeed*va_f*va*sqrt(2.0)/2.0 + FSThermalRatio*vy - (E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))
+        !vp(l,3) = FSThermalRatio*vz + (E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))!1.0*va_f*va+va_f*vz
+        !beta_p(l) = (ForeshockBeta)*beta_particle !2 for generating half of z side and 10 for 10% of FS ions.
         
        ! write(*,*) 'vx,vy,vz,vexbx, vexb2, vexb3',vx, vy, vz,(E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2)), - (E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1)), (E(i,j,k,1)*b1(i,j,k,2) - E(i,j,k,2)*b1(i,j,k,1))
        !write(*,*) 'b0_init,b1...', sqrt(b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2), b1(i,j,k,1),b1(i,j,k,2),sqrt(b1(i,j,k,1)**2 + b1(i,j,k,2)**2 ),(E(i,j,k,2)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,2))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2)),(E(i,j,k,1)*b1(i,j,k,3) - E(i,j,k,3)*b1(i,j,k,1))/((b1(i,j,k,1)**2+b1(i,j,k,2)**2+b1(i,j,k,3)**2))

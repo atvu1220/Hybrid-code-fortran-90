@@ -7,9 +7,9 @@ module inputs
       
       real:: b0_init, nf_init,dt_frac, vsw, vth, plasma_beta, Ni_tot_frac, dx_frac, &
             nu_init_frac,lambda_i,m_pu, mO, ppc, nu_init, ion_amu, load_rate, amp, &
-            height_stretch, zsf, etemp0, mion,va,va_f, FSDriftSpeed,FSDensityRatio, ForeshockBeta, TDpressureBalance, TDcellBalance
+            height_stretch, zsf, etemp0, mion,va,va_f, FSDriftSpeed,FSDensityRatio, ForeshockBeta, TDpressureBalance, TDcellBalance, magneticShear
       real, parameter:: amu=1.6605e-27!, mion = 3.841e-26
-      integer:: mp, nt, nout, loc, grad, nrgrd, boundx,ddthickness,FSBeamWidth, FSThermalRatio 
+      integer:: mp, nt, nout, loc, grad, nrgrd, boundx,ddthickness,FSBeamWidth, FSThermalRatio , quasiparallel
       integer(4):: Ni_tot_0
 
       real, parameter:: q=1.6e-19         !electron charge
@@ -124,6 +124,10 @@ module inputs
                  write(*,*) 'Foreshock Drift Speed........',FSDriftSpeed
                  read(100,*) TDpressureBalance
                  write(*,*) 'TD Pressure Balance........',TDpressureBalance
+                 read(100,*) magneticShear
+                 write(*,*) 'Magnetic Shear........',magneticShear
+                 read(100,*) quasiparallel
+                 write(*,*) 'Number of quasiparallel sides........',quasiparallel
                  read(100,*) out_dir
                  write(*,*) 'output dir........',out_dir
                  
