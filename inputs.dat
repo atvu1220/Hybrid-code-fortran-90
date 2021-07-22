@@ -23,8 +23,8 @@
 150        					!Foreshock Beam Width, in lambda_i, starts below nz/2-ddthickness
 12.0						!Ratio of densities between foreshock ions over solar wind ions
 8.0    						!Foreshock Thermal Multiplier
-2.0       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
+1.6       					!Foreshock Drift Speed, multiplied by SW flow speed in Ma
 1.0						!1.0 for TD pressure balance with ion density, 0.0 for no TD
-45.0						!Magnetic Shear across Harris Current Sheet
-2						!Number of Quasi-parallel sides.
-'/import/c1/DAYSIDE/atvu/Run214/'            	!output directory
+90.0						!Magnetic Shear across Harris Current Sheet
+1						!Number of Quasi-parallel sides.
+'/import/c1/DAYSIDE/atvu/Run230/'            	!output directory

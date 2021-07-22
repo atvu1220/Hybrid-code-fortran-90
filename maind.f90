@@ -501,10 +501,10 @@ if (m .gt. 0.5*sw_delayTime ) then
         Ni_tot = Ni_tot_2
         call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,5,1.0) !TD
         
-        Ni_tot_1 = Ni_tot+1
-        Ni_tot_2 = Ni_tot + FS_boundary
-        Ni_tot = Ni_tot_2
-        call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
+       ! Ni_tot_1 = Ni_tot+1
+       ! Ni_tot_2 = Ni_tot + FS_boundary
+       ! Ni_tot = Ni_tot_2
+       ! call load_foreshock_Maxwellian(vth,Ni_tot_1,Ni_tot_2,mion,1.0,2,0.0) !FS Bot Right
         
         
         if (quasiparallel .eq. 2) then

@@ -158,6 +158,43 @@ module initial
 					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
 					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
                               endif
+                              if (Bsetup .eq. 9) then !BLMN Coordinates, with variable magneticShear frin input.dat and made force-free by Bz, 7/16/2021 "Kinetic model of force-free current sheet Kolotkov et al. 2015"
+                              !Constant B everywhere, BM
+                              b0(i,j,k,1) = b0_init*eoverm*0.5*cos(magneticShear/180*pi/2)
+                              b0(i,j,k,2) = b0_init*eoverm*0.5*sin(magneticShear/180*pi/2)
+                              b0(i,j,k,3) = 0.0
+                              		if (k .le. nz/2.0) then !BL bottom
+   						b0(i,j,k,1) = b0(i,j,k,1) + (cos(0.0) - cos(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = b0(i,j,k,2) - (         sin(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,3) = sqrt(2.0)/2.0*b0_init*eoverm*1.0/(cosh( ( qz(nz/2.0)-qz(k) ) / (ddthickness*delz) ) )
+					endif
+					if (k .gt. nz/2.0) then !BL top
+    						b0(i,j,k,1) = b0(i,j,k,1) - (cos(magneticShear/180.0*pi/2) - cos(magneticShear/180.0*pi)   ) * b0_init*eoverm*0.5*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,2) = b0(i,j,k,2) + (sin(magneticShear/180.0*pi)   - sin(magneticShear/180.0*pi/2.0) ) * b0_init*eoverm*0.5*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = sqrt(2.0)/2.0*b0_init*eoverm*1.0/(cosh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz)))
+					endif
+					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
+					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
+                              endif
+                              if (Bsetup .eq. 10) then !BLMN Coordinates, +y, Force-Free with z
+                              !Constant B everywhere, BM
+                              b0(i,j,k,1) = b0_init*eoverm*0.25
+                              b0(i,j,k,2) = b0_init*eoverm*0.25
+                              b0(i,j,k,3) = 0.0
+                              		if (k .le. nz/2.0) then !BL bottom
+   						b0(i,j,k,1) = b0(i,j,k,1) + b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,2) = b0(i,j,k,2) - b0_init*eoverm*0.25*tanh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz))
+   						b0(i,j,k,3) = sqrt(2.0)/2.0*b0_init*eoverm*0.5*1.0/(cosh( ( qz(nz/2.0)-qz(k))/(ddthickness*delz)))
+					endif
+					if (k .gt. nz/2.0) then !BL top
+    						b0(i,j,k,1) = b0(i,j,k,1) - b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,2) = b0(i,j,k,2) + b0_init*eoverm*0.25*tanh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz))
+    						b0(i,j,k,3) = sqrt(2.0)/2.0*b0_init*eoverm*0.5*1.0/(cosh( (qz(k)-qz(nz/2.0) )/(ddthickness*delz)))
+					endif
+					!write(*,*) 'b0_init, eoverm', b0_init, eoverm, b0_init*eoverm
+					!write(*,*) 'i,j,k',i,j,k,b0(i,j,k,1),b0(i,j,k,2)
+                              endif
+                              
                               
                         enddo
                   enddo
